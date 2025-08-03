@@ -48,3 +48,12 @@ WriteLine(response);
     "response" : "hello Bob!"
 }
 ```
+
+
+## Get started
+
+1) Clone the repository
+2) Start the test server in the `Morph.Api` folder using `dotnet run`
+3) Within a seperate terminal, send a test request to the server using the `Morph.Test` project (can also be run with `dotnet run`)
+
+The test server checks for a .mor file within the folder corresponding to the URL of the request, starting at the `morph` folder, an example .mor file is included in `Morph.Api\morph\test.mor`

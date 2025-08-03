@@ -1,0 +1,22 @@
+// A test morph file
+
+in JSON body;
+in URL query;
+
+var name = query["name"];
+
+var greetingToUse = query["greeting"];
+var greeting = body[greetingToUse];
+
+var response = $"
+{
+    \"response\" : \"[greeting] [name]!\"
+}";
+
+var time = Clock();
+
+var a_number = 123;
+var a_string = "Hello world!";
+
+Write(time);
+WriteLine(response);

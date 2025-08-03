@@ -1,0 +1,25 @@
+{
+  "name": "MorphLang",
+  "displayName": "MorphLang",
+  "description": "Language support for the morph language",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.102.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [{
+      "id": "morph",
+      "aliases": ["Morph", "morph"],
+      "extensions": [".mor"],
+      "configuration": "./language-configuration.json"
+    }],
+    "grammars": [{
+      "language": "morph",
+      "scopeName": "source.morph",
+      "path": "./syntaxes/morph.tmLanguage.json"
+    }]
+  }
+}

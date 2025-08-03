@@ -1,0 +1,72 @@
+program        → declaration* EOF ;
+
+-- Declarations
+
+declaration    → funDecl
+               | varDecl
+               | inDecl
+               | statement ;
+
+funDecl        → "fun" function ;
+varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
+inDecl         → "in" INTYPE IDENTIFIER ";" ;
+
+
+-- Statements
+
+statement      → exprStmt
+               | forStmt
+               | ifStmt
+               | returnStmt
+               | whileStmt
+               | block ;
+
+exprStmt       → expression ";" ;
+forStmt        → "for" "(" ( varDecl | exprStmt | ";" )
+                           expression? ";"
+                           expression? ")" statement ;
+ifStmt         → "if" "(" expression ")" statement
+                 ( "else" statement )? ;
+returnStmt     → "return" expression? ";" ;
+whileStmt      → "while" "(" expression ")" statement ;
+block          → "{" declaration* "}" ;
+
+
+-- Expressions
+
+expression     → assignment ;
+
+assignment     → ( call "." )? IDENTIFIER "=" assignment
+               | logic_or ;
+
+logic_or       → logic_and ( "or" logic_and )* ;
+logic_and      → equality ( "and" equality )* ;
+equality       → comparison ( ( "!=" | "==" ) comparison )* ;
+comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
+term           → factor ( ( "-" | "+" ) factor )* ;
+factor         → unary ( ( "/" | "*" ) unary )* ;
+
+unary          → ( "!" | "-" ) unary | call ;
+call           → primary ( "(" arguments? ")" | "." IDENTIFIER )* ;
+index          → primary [ expression ] ;
+primary        → "true" | "false" | "nil" | "this"
+               | NUMBER | STRING | IDENTIFIER | "(" expression ")"
+               | "super" "." IDENTIFIER ;
+
+
+
+-- Utility rules
+
+function       → IDENTIFIER "(" parameters? ")" block ;
+parameters     → IDENTIFIER ( "," IDENTIFIER )* ;
+arguments      → expression ( "," expression )* ;
+
+
+-- Lexical grammar
+
+NUMBER         → DIGIT+ ( "." DIGIT+ )? ;
+STRING         → "\"" ( <any char except "\""> | "\\" ( "\"" | "\\" | "n" | "r" | "t" ) )* "\"" ;
+IDENTIFIER     → ALPHA ( ALPHA | DIGIT )* ;
+ALPHA          → "a" ... "z" | "A" ... "Z" | "_" ;
+DIGIT          → "0" ... "9" ;
+INTYPE         → "json"

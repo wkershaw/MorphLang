@@ -36,7 +36,28 @@ internal class Environment
 
         throw new RuntimeException(name, $"Undefined variable '{name.Lexeme}'.");
     }
-    
+
+    public object? GetAt(int distance, Token name)
+    {
+        return Ancestor(distance, name)._values[name.Lexeme];
+    }
+
+    private Environment Ancestor(int distance, Token name)
+    {
+        Environment env = this;
+        for (int i = 0; i < distance; i++)
+        {
+            if (env._enclosing is null)
+            {
+                throw new RuntimeException(name, $"Resolution error");
+            }
+
+            env = env._enclosing;
+        }
+
+        return env;
+    }
+
     public void Assign(Token name, object? value)
     {
         if (_values.ContainsKey(name.Lexeme))
@@ -52,5 +73,10 @@ internal class Environment
         }
 
         throw new RuntimeException(name, $"Undefined variable '{name.Lexeme}'.");
+    }
+
+    public void AssignAt(int distance, Token name, object? value)
+    {
+        Ancestor(distance, name)._values[name.Lexeme] = value;
     }
 }

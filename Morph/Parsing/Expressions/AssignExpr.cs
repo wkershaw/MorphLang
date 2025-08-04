@@ -6,9 +6,9 @@ namespace Morph.Parsing.Expressions;
 internal class AssignExpr : Expr
 {
     public Token Name { get; private set; }
-    public Expr? Value { get; private set; }
+    public Expr Value { get; private set; }
 
-    public AssignExpr(Token name, Expr? value)
+    public AssignExpr(Token name, Expr value)
     {
         Name = name;
         Value = value;

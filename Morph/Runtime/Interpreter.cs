@@ -16,6 +16,7 @@ internal class Interpreter : IExpressionVisitor<object?>, IStmtVisitor<object?>
 
     public Environment Globals { get; private set; }
     private Environment _environment;
+    private readonly Dictionary<Expr, int> _locals;
 
     public Interpreter()
     {
@@ -28,18 +29,10 @@ internal class Interpreter : IExpressionVisitor<object?>, IStmtVisitor<object?>
         Globals.Define("Write", new WriteCallable());
         Globals.Define("Debug", new DebugCallable());
         Globals.Define("WriteLine", new WriteLineCallable());
-        
+
         _environment = Globals;
+        _locals = new Dictionary<Expr, int>();
     }
-
-    public string Stringify(object? obj)
-    {
-        if (obj is null) return "nil";
-        if (obj is decimal dec) return dec.ToString();
-        if (obj is string str) return str;
-        return obj.ToString() ?? "nil";
-    }
-
 
     public void Interpret(List<Stmt> statements, Dictionary<string, string> inputs)
     {
@@ -62,6 +55,19 @@ internal class Interpreter : IExpressionVisitor<object?>, IStmtVisitor<object?>
         }
     }
 
+    public string Stringify(object? obj)
+    {
+        if (obj is null) return "nil";
+        if (obj is decimal dec) return dec.ToString();
+        if (obj is string str) return str;
+        return obj.ToString() ?? "nil";
+    }
+
+    public void Resolve(Expr expr, int depth)
+    {
+        _locals.Add(expr, depth);   
+    }
+
     public void ExecuteBlock(List<Stmt> statements, Environment environment)
     {
         Environment previous = _environment;
@@ -81,7 +87,7 @@ internal class Interpreter : IExpressionVisitor<object?>, IStmtVisitor<object?>
 
     public object? Visit(FunctionStmt statement)
     {
-        var function = new MorphFunction(statement);
+        var function = new MorphFunction(statement, _environment);
         _environment.Define(statement.Name.Lexeme, function);
 
         return null;
@@ -189,13 +195,22 @@ internal class Interpreter : IExpressionVisitor<object?>, IStmtVisitor<object?>
 
     public object? Visit(VariableExpr expression)
     {
-        return _environment.Get(expression.Name);
+        return LookUpVariable(expression.Name, expression);
     }
 
     public object? Visit(AssignExpr expression)
     {
         object? value = Evaluate(expression.Value);
-        _environment.Assign(expression.Name, value);
+
+        if (_locals.TryGetValue(expression, out int distance))
+        {
+            _environment.AssignAt(distance, expression.Name, value);
+        }
+        else
+        {
+            Globals.Assign(expression.Name, value);
+        }
+
         return value;
     }
 
@@ -340,14 +355,26 @@ internal class Interpreter : IExpressionVisitor<object?>, IStmtVisitor<object?>
         return expression.Value;
     }
 
+    private object? LookUpVariable(Token name, Expr expression)
+    {
+        if (_locals.TryGetValue(expression, out int distance))
+        {
+            return _environment.GetAt(distance, name);
+        }
+        else
+        {
+            return Globals.Get(name);
+        }
+    }
+
     private void Execute(Stmt statement)
     {
         statement.Accept(this);
     }
 
-    private object? Evaluate(Expr? expression)
+    private object? Evaluate(Expr expression)
     {
-        return expression?.Accept(this);
+        return expression.Accept(this);
     }
 
     private bool IsTruthy(object? obj)

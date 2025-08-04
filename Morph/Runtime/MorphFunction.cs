@@ -6,17 +6,19 @@ namespace Morph.Runtime;
 internal class MorphFunction : IMorphCallable
 {
     private readonly FunctionStmt _declaration;
+    private readonly Environment _closure;
 
     public int Arity => _declaration.Params.Count;
 
-    public MorphFunction(FunctionStmt declaration)
+    public MorphFunction(FunctionStmt declaration, Environment closure)
     {
         _declaration = declaration;
+        _closure = closure;
     }
 
     public object? Call(Interpreter interpreter, List<object?> arguments)
     {
-        Environment environment = new Environment(interpreter.Globals);
+        Environment environment = new Environment(_closure);
 
         foreach ((Token param, object? argument) in _declaration.Params.Zip(arguments))
         {

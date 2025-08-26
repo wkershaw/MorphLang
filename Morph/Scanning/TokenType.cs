@@ -23,6 +23,9 @@ internal enum TokenType
     Return, True,
     Var, While,
 
+    // OOP
+    Class, This,
+
     // In Declaration
     In, Json, Url,
 

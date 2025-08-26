@@ -12,7 +12,7 @@ public static class Morph
     public static event EventHandler<string>? ErrorOut;
     public static event EventHandler<string>? DebugOut;
 
-    private static readonly Interpreter interpreter = new Interpreter();
+    private static Interpreter interpreter = new Interpreter();
 
     private static bool hadError = false;
     private static bool hadRuntimeError = false;
@@ -37,6 +37,8 @@ public static class Morph
 
 	public static bool RunCode(string code, Dictionary<string, string> inputs)
 	{
+		interpreter = new Interpreter();
+
         hadError = false;
         hadRuntimeError = false;
 
@@ -118,7 +120,7 @@ public static class Morph
 
     internal static void RuntimeError(RuntimeException error)
     {
-        Output("error", $"[line {error.Token.Line}] Runtime Error: {error.Message}");
+        Output("error", $"[line {error.Token?.Line}] Runtime Error: {error.Message}");
         hadRuntimeError = true;
     }
 

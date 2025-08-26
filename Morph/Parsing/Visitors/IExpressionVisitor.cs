@@ -23,5 +23,11 @@ namespace Morph.Parsing.Visitors
         T Visit(IndexExpr expression);
 
         T Visit(InterpolatedStringExpr expression);
+
+        T Visit(GetExpr expression);
+
+        T Visit(SetExpr epression);
+
+        T Visit(ThisExpr expression);
     }
 }

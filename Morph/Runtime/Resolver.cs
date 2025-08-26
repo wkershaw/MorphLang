@@ -10,8 +10,18 @@ internal class Resolver : IExpressionVisitor<object?>, IStmtVisitor<object?>
     private enum FunctionType
     {
         None,
-        Function
+        Function,
+        Initialiser,
+        Method,
     }
+
+    private enum ClassType
+    {
+        None,
+        Class
+    }
+
+    private ClassType _currentClass = ClassType.None;
 
     private readonly Interpreter _interpreter;
     private readonly Stack<Dictionary<string, bool>> _scopes;
@@ -62,6 +72,34 @@ internal class Resolver : IExpressionVisitor<object?>, IStmtVisitor<object?>
         return null;
     }
 
+    public object? Visit(ClassStmt statement)
+    {
+        var enclosingClass = _currentClass;
+        _currentClass = ClassType.Class;
+
+        Declare(statement.Name);
+        Define(statement.Name);
+
+        BeginScope();
+        _scopes.Peek().Add("this", true);
+
+        foreach (FunctionStmt method in statement.Methods)
+        {
+            var declaration = FunctionType.Method;
+            if (method.Name.Lexeme == "init")
+            {
+                declaration = FunctionType.Initialiser;
+            }
+
+            ResolveFunction(method, declaration);
+        }
+
+        EndScope();
+
+        _currentClass = enclosingClass;
+        return null;
+    }
+
     public object? Visit(ExpressionStmt statement)
     {
         Resolve(statement.Expression);
@@ -89,9 +127,14 @@ internal class Resolver : IExpressionVisitor<object?>, IStmtVisitor<object?>
         }
 
         if (statement.Value is not null)
+        {
+            if (_currentFunction == FunctionType.Initialiser)
             {
-                Resolve(statement.Value);
+                Morph.Error(statement.Keyword, "Can't return a value from an initialiser");
             }
+
+            Resolve(statement.Value);
+        }
 
         return null;
     }
@@ -146,6 +189,31 @@ internal class Resolver : IExpressionVisitor<object?>, IStmtVisitor<object?>
             Resolve(argument);
         }
 
+        return null;
+    }
+
+    public object? Visit(GetExpr expression)
+    {
+        Resolve(expression.Object);
+        return null;
+    }
+
+    public object? Visit(SetExpr expression)
+    {
+        Resolve(expression.Value);
+        Resolve(expression.Object);
+        return null;
+    }
+
+    public object? Visit(ThisExpr expression)
+    {
+        if (_currentClass == ClassType.None)
+        {
+            Morph.Error(expression.Keyword, "Can't use 'this' outside of a class");
+            return null;
+        }
+
+        ResolveLocal(expression, expression.Keyword);
         return null;
     }
 
@@ -238,14 +306,14 @@ internal class Resolver : IExpressionVisitor<object?>, IStmtVisitor<object?>
 
     private void ResolveLocal(Expr expression, Token name)
     {
-        for (int i = _scopes.Count() - 1; i >= 0; i--)
-        {
-            if (_scopes.ElementAt(i).ContainsKey(name.Lexeme))
-            {
-                _interpreter.Resolve(expression, _scopes.Count() - 1 - i);
-                return;
-            }
-        }
+		for (int i = 0; i < _scopes.Count(); i++)
+		{
+			if (_scopes.ElementAt(i).ContainsKey(name.Lexeme))
+			{
+				_interpreter.Resolve(expression, i);
+				return;
+			}
+		}
     }
 
     private void Resolve(Stmt statement)

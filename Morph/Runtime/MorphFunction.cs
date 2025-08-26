@@ -7,13 +7,15 @@ internal class MorphFunction : IMorphCallable
 {
     private readonly FunctionStmt _declaration;
     private readonly Environment _closure;
+    private bool _isInitialiser;
 
     public int Arity => _declaration.Params.Count;
 
-    public MorphFunction(FunctionStmt declaration, Environment closure)
+    public MorphFunction(FunctionStmt declaration, Environment closure, bool isInitialiser)
     {
         _declaration = declaration;
         _closure = closure;
+        _isInitialiser = isInitialiser;
     }
 
     public object? Call(Interpreter interpreter, List<object?> arguments)
@@ -31,10 +33,27 @@ internal class MorphFunction : IMorphCallable
         }
         catch (Return r)
         {
+            if (_isInitialiser)
+            {
+                return _closure.GetAt(0, "this");
+            }
+
             return r.Value;
         }
 
+        if (_isInitialiser)
+        {
+            return _closure.GetAt(0, "this");
+        }
+
         return null;
+    }
+
+    public MorphFunction Bind(MorphInstance instance)
+    {
+        Environment environment = new Environment(_closure);
+        environment.Define("this", instance);
+        return new MorphFunction(_declaration, environment, _isInitialiser);
     }
 
     public override string ToString()

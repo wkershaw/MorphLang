@@ -85,11 +85,14 @@ string expressions = """
     AssignExpr: Token Name, Expr? Value
     BinaryExpr: Expr Left, Token Op, Expr Right
     CallExpr: Expr Callee, Token Paren, List<Expr> Arguments
+    GetExpr: Expr object, Token name
     GroupingExpr: Expr Expression
     IndexExpr: Expr Callee, Token Bracket, Expr Index
     InterpolatedStringExpr: List<Expr> Parts
     LiteralExpr: object? Value
     LogicalExpr: Expr Left, Token Op, Expr Right
+    SetExpr: Expr Object, Token Name, Expr Value
+    ThisExpr: Token Keyword
     UnaryExpr: Token Op, Expr Right
     VariableExpr: Token Name
     """;
@@ -103,6 +106,7 @@ foreach (var file in files)
 
 string statements = """
     BlockStmt: List<Stmt> Statements
+    ClassStmt: Token Name, List<FunctionStmt> Methods
     ExpressionStmt: Expr Expression
     FunctionStmt: Token Name, List<Token> Parameters, List<Stmt> Body
     IfStmt: Expr Condition, Stmt ThenBranch, Stmt? ElseBranch

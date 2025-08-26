@@ -19,4 +19,6 @@ internal interface IStmtVisitor<T>
     T Visit(WhileStmt statement);
 
     T Visit(BlockStmt statement);
+
+    T Visit(ClassStmt statement);
 }

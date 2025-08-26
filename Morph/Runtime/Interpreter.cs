@@ -87,9 +87,26 @@ internal class Interpreter : IExpressionVisitor<object?>, IStmtVisitor<object?>
 
     public object? Visit(FunctionStmt statement)
     {
-        var function = new MorphFunction(statement, _environment);
+        var function = new MorphFunction(statement, _environment, false);
         _environment.Define(statement.Name.Lexeme, function);
 
+        return null;
+    }
+
+    public object? Visit(ClassStmt statement)
+    {
+        _environment.Define(statement.Name.Lexeme, null);
+
+        var methods = new Dictionary<string, MorphFunction>();
+
+        foreach (FunctionStmt method in statement.Methods)
+        {
+            var function = new MorphFunction(method, _environment, method.Name.Lexeme == "init");
+            methods.Add(method.Name.Lexeme, function);
+        }
+
+        MorphClass mClass = new MorphClass(statement.Name.Lexeme, methods);
+        _environment.Assign(statement.Name, mClass);
         return null;
     }
 
@@ -321,7 +338,39 @@ internal class Interpreter : IExpressionVisitor<object?>, IStmtVisitor<object?>
             return function.Call(this, arguments);
         }
 
-        throw new RuntimeException(expression.Paren, "Can only call functions and classes.");
+        throw new RuntimeException(expression.Paren, "Can only call functions and classes");
+    }
+
+    public object? Visit(GetExpr expression)
+    {
+        object? obj = Evaluate(expression.Object);
+
+        if (obj is not null && obj is MorphInstance instance)
+        {
+            return instance.Get(expression.Name);
+        }
+
+        throw new RuntimeException(expression.Name, "Only instances have properties");
+    }
+
+    public object? Visit(SetExpr expression)
+    {
+        object? obj = Evaluate(expression.Object);
+
+        if (obj is not null && obj is MorphInstance instance)
+        {
+            object? value = Evaluate(expression.Value);
+            instance.Set(expression.Name, value);
+
+            return value;
+        }
+
+        throw new RuntimeException(expression.Name, "Only instances have fields");
+    }
+
+    public object? Visit(ThisExpr expression)
+    {
+        return LookUpVariable(expression.Keyword, expression);
     }
 
     public object? Visit(IndexExpr expression)
@@ -359,7 +408,7 @@ internal class Interpreter : IExpressionVisitor<object?>, IStmtVisitor<object?>
     {
         if (_locals.TryGetValue(expression, out int distance))
         {
-            return _environment.GetAt(distance, name);
+            return _environment.GetAt(distance, name.Lexeme);
         }
         else
         {

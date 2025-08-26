@@ -1,22 +1,17 @@
-// A test morph file
-
-in JSON body;
-in URL query;
-
-var name = query["name"];
-
-var greetingToUse = query["greeting"];
-var greeting = body[greetingToUse];
-
-var response = $"
+class testClass
 {
-    \"response\" : \"[greeting] [name]!\"
-}";
+    init() {
+        this.name = "This is a test";
+        this.num = 42;
+    }
 
-var time = Clock();
+    testMethod() {
+        WriteLine(this.num);
+        return this.name;
+    }
+}
 
-var a_number = 123;
-var a_string = "Hello world!";
-
-Write(time);
-WriteLine(response);
+var obj = testClass();
+obj.name = "Changed name";
+obj.num = 100;
+WriteLine(obj.testMethod());

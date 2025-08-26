@@ -34,6 +34,7 @@ internal class Parser
     {
         try
         {
+            if (Match(TokenType.Class)) return ClassDeclaration();
             if (Match(TokenType.Fun)) return Function("function");
             if (Match(TokenType.Var)) return VarDeclaration();
             if (Match(TokenType.In)) return InDeclaration();
@@ -47,7 +48,7 @@ internal class Parser
         }
     }
 
-    private Stmt Function(string kind)
+    private FunctionStmt Function(string kind)
     {
         Token name = Consume(TokenType.Identifier, $"Expect {kind} name.");
 
@@ -85,6 +86,22 @@ internal class Parser
 
         Consume(TokenType.Semicolon, "Expect ';' after variable declaration.");
         return new VarStmt(name, initialiser);
+    }
+
+    private Stmt ClassDeclaration()
+    {
+        Token name = Consume(TokenType.Identifier, "Expect class name");
+        Consume(TokenType.LeftBrace, "Expect '{' before class body");
+
+        List<FunctionStmt> methods = new List<FunctionStmt>();
+        while (!Check(TokenType.RightBrace) && !IsAtEnd())
+        {
+            methods.Add(Function("method"));
+        }
+
+        Consume(TokenType.RightBrace, "Expect '}' after class body");
+
+        return new ClassStmt(name, methods);
     }
 
     private Stmt InDeclaration()
@@ -273,6 +290,10 @@ internal class Parser
             {
                 return new AssignExpr(variable.Name, value);
             }
+            else if (expr is GetExpr get)
+            {
+                return new SetExpr(get.Object, get.Name, value);
+            }
 
             throw Error(equals, "Invalid assignment target.");
         }
@@ -386,6 +407,11 @@ internal class Parser
             {
                 expr = FinishCall(expr);
             }
+            if (Match(TokenType.Dot))
+            {
+                Token name = Consume(TokenType.Identifier, "Expect property name after '.'");
+                expr = new GetExpr(expr, name);
+            }
             else
             {
                 break;
@@ -452,6 +478,11 @@ internal class Parser
         if (Match(TokenType.Number, TokenType.String))
         {
             return new LiteralExpr(Previous().Literal);
+        }
+
+        if (Match(TokenType.This))
+        {
+            return new ThisExpr(Previous());
         }
 
         if (Match(TokenType.InterpolatedStringStart))

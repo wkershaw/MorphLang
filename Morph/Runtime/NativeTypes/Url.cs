@@ -45,11 +45,22 @@ internal class Url : MorphClass
 
 	public class UrlInstance : MorphInstance, IMorphIndexable
 	{
-		private readonly string _url;
+		private readonly Uri _uri;
 
 		public UrlInstance(MorphClass mClass, string urlString) : base(mClass)
 		{
-			_url = urlString;
+			if (Uri.TryCreate(urlString, UriKind.Absolute, out Uri? uri))
+			{
+				_uri = uri;
+				_fields.Add("urlString", urlString.Trim('/'));
+				_fields.Add("path", uri.GetLeftPart(UriPartial.Path).Trim('/'));
+				_fields.Add("localPath", uri.LocalPath.Trim('/'));
+				_fields.Add("query", uri.Query.TrimStart('?'));
+			}
+			else
+			{
+				throw new RuntimeException(null, $"Provided string is not a valid URL: {urlString}");
+			}
 		}
 
 		object? IMorphIndexable.Get(Interpreter interpreter, object? key)
@@ -59,13 +70,12 @@ internal class Url : MorphClass
 				throw new RuntimeException(null, "Can only index Url with a string");
 			}
 
-			var uri = new Uri(_url);
-			var queryString = HttpUtility.ParseQueryString(uri.Query);
-        	return queryString[keyString];
+			var queryString = HttpUtility.ParseQueryString(_uri.Query);
+			return queryString[keyString];
 		}
 		public override string ToString()
 		{
-			return _url;
+			return _uri.OriginalString;
 		}
 	}
 }

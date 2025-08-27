@@ -1,12 +1,11 @@
-class MyClass
-{
-    init()
-    {
-        this.x = 42;
-    }
+in Json body;
+in Url url;
 
-    myMethod()
-    {
-        WriteLine(this.x);
-    }
-}
+WriteLine("Hello from Morph!");
+WriteLine(url.urlString);
+WriteLine(url.path);
+WriteLine(url.query);
+WriteLine(url.localPath);
+
+SetHeader("X-Custom-Header", "MyValue");
+SetResponseCode(201);

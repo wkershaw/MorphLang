@@ -6,60 +6,26 @@ using Morph.Scanning;
 
 namespace Morph;
 
+public record Message(string channel, string content);
+
 public static class Morph
 {
-    public static event EventHandler<string>? StdOut;
-    public static event EventHandler<string>? ErrorOut;
-    public static event EventHandler<string>? DebugOut;
+    public static event EventHandler<Message>? Out;
 
     private static Interpreter interpreter = new Interpreter();
 
     private static bool hadError = false;
     private static bool hadRuntimeError = false;
 
-    public static void RunFile(string path, params string[] inputFilePaths)
+    public static bool RunCode(string code, Dictionary<string, string> inputs)
     {
-        string code = File.ReadAllText(path);
-		Dictionary<string, string> inputs = GenerateInputDict(inputFilePaths);
-
-		Run(code, inputs);
-
-        if (hadError)
-        {
-            System.Environment.Exit(65);
-        }
-
-        if (hadRuntimeError)
-        {
-            System.Environment.Exit(70);
-        }
-    }
-
-	public static bool RunCode(string code, Dictionary<string, string> inputs)
-	{
-		interpreter = new Interpreter();
+        interpreter = new Interpreter();
 
         hadError = false;
         hadRuntimeError = false;
 
-		Run(code, inputs);
+        Run(code, inputs);
         return !hadError && !hadRuntimeError;
-	}
-
-    public static void RunPrompt()
-    {
-        while (true)
-        {
-            Console.Write("Morph> ");
-            string? line = Console.ReadLine();
-
-            if (string.IsNullOrEmpty(line))
-                break;
-
-            Run(line, []);
-            hadError = false;
-            hadRuntimeError = false;
-        }
     }
 
     private static void Run(string source, Dictionary<string, string> inputs)
@@ -88,17 +54,7 @@ public static class Morph
 
     internal static void Output(string channel, string message)
     {
-        switch (channel)
-        {
-            case "error":
-                ErrorOut?.Invoke(null, message);
-                return;
-            case "debug":
-                DebugOut?.Invoke(null, message);
-                return;
-        }
-
-        StdOut?.Invoke(null, message);
+        Out?.Invoke(null, new Message(channel, message));
     }
 
     internal static void Error(int line, string message)
@@ -128,20 +84,5 @@ public static class Morph
     {
         Output("error", $"[line {line}] Error {where}: {message}");
         hadError = true;
-    }
-
-    private static Dictionary<string, string> GenerateInputDict(string[] filePaths)
-    {
-        var dict = new Dictionary<string, string>();
-
-        foreach (var filePath in filePaths)
-        {
-            var fileName = Path.GetFileNameWithoutExtension(filePath);
-            var fileContent = File.ReadAllText(filePath);
-
-            dict.Add(fileName, fileContent);
-        }
-
-        return dict;
     }
 }

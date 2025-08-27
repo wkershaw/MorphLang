@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Morph;
 using Scalar.AspNetCore;
 using System.Net;
 using System.Text;
@@ -25,34 +26,84 @@ app.MapPost("/{url}", async (string url, HttpContext httpContext, HttpRequest ht
 	{
 		httpContext.Response.StatusCode = (int)HttpStatusCode.NotFound;
 		await httpContext.Response.WriteAsync("Unable to find program at url: " + url);
-		return;// Results.NotFound("Program not found");
+		return;
 	}
 
 	var inputs = new Dictionary<string, string>()
 	{
 		{ "body", json.ToJsonString() },
-		{ "query", httpRequest.QueryString.ToString() }
+		{ "url", httpContext.Request.Host + httpContext.Request.Path + httpContext.Request.QueryString }
 	};
 
 	var stdOut = new StringBuilder();
 	var errorOut = new StringBuilder();
+	var headers = new Dictionary<string, string>();
+	int? responseStatusCode = null;
 
-	Morph.Morph.StdOut += (object? _, string message) => stdOut.Append(message);
-	Morph.Morph.ErrorOut += (object? _, string message) => errorOut.Append(message);
-	Morph.Morph.DebugOut += (object? _, string message) => Console.WriteLine(message);
-
-	var result = Morph.Morph.RunCode(morphProgram, inputs);
-
-	if (result)
+	void Handler(object? _, Message message)
 	{
-		await httpContext.Response.WriteAsync(stdOut.ToString());
-		return;
+		switch (message.channel)
+		{
+			case "write":
+				stdOut.Append(message.content);
+				break;
+			case "error":
+				errorOut.Append(message.content);
+				break;
+			case "debug":
+				Console.WriteLine(message.content);
+				break;
+			case "header":
+				var parts = message.content.Split(':', 2);
+				if (parts.Length == 2)
+				{
+					headers[parts[0].Trim()] = parts[1].Trim();
+				}
+				break;
+			case "response":
+				if (int.TryParse(message.content, out int statusCode))
+				{
+					responseStatusCode = statusCode;
+				}
+				else
+				{
+					responseStatusCode = (int)HttpStatusCode.InternalServerError;
+					errorOut.Append("Invalid response code set: " + message.content);
+				}
+				break;
+		}
 	}
 
-	Console.Error.WriteLine(errorOut.ToString());
+	// Subscribe to the event
+	Morph.Morph.Out += Handler;
 
-	httpContext.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
-	await httpContext.Response.WriteAsync(errorOut.ToString());
+	try
+	{
+		var result = Morph.Morph.RunCode(morphProgram, inputs);
+
+		// Apply headers safely before writing the response
+		foreach (var kvp in headers)
+		{
+			httpContext.Response.Headers[kvp.Key] = kvp.Value;
+		}
+
+		httpContext.Response.StatusCode = responseStatusCode ?? (result ? 200 : 500);
+
+		if (result)
+		{
+			await httpContext.Response.WriteAsync(stdOut.ToString());
+		}
+		else
+		{
+			Console.Error.WriteLine(errorOut.ToString());
+			await httpContext.Response.WriteAsync(errorOut.ToString());
+		}
+	}
+	finally
+	{
+		// Always unsubscribe after
+		Morph.Morph.Out -= Handler;
+	}
 });
 
 app.Run();

@@ -28,6 +28,8 @@ internal class Interpreter : IExpressionVisitor<object?>, IStmtVisitor<object?>
         Globals.Define("Write", new WriteCallable());
         Globals.Define("Debug", new DebugCallable());
         Globals.Define("WriteLine", new WriteLineCallable());
+        Globals.Define("SetHeader", new SetHeaderCallable());
+        Globals.Define("SetResponseCode", new SetResponseCodeCallable());
 		Globals.Define("Json", new Json());
         Globals.Define("Url", new Url());
 

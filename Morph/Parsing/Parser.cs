@@ -106,16 +106,18 @@ internal class Parser
 
     private Stmt InDeclaration()
     {
-        if (Match(TokenType.Json, TokenType.Url))
+        if (!Match(TokenType.Identifier))
         {
-            Token type = Previous();
-            Token name = Consume(TokenType.Identifier, "Expect 'in' declaration name.");
-
-            Consume(TokenType.Semicolon, "Expect ';' after 'in' declaration.");
-            return new InStmt(type, name);
+            throw Error(Previous(), "Expect 'in' declaration type and name.");
         }
 
-        throw Error(Peek(), "Unexpected input type");
+        //Expr type = new CallExpr(new VariableExpr(Previous()), Previous(), new List<Expr>());
+        Expr type = new VariableExpr(Previous());
+
+        Token name = Consume(TokenType.Identifier, "Expect 'in' declaration name.");
+
+        Consume(TokenType.Semicolon, "Expect ';' after 'in' declaration.");
+        return new InStmt(type, name);
     }
 
     private Stmt Statement()
@@ -491,9 +493,9 @@ internal class Parser
         }
 
         if (Match(TokenType.Identifier))
-            {
-                return new VariableExpr(Previous());
-            }
+        {
+            return new VariableExpr(Previous());
+        }
 
         if (Match(TokenType.LeftParen))
         {

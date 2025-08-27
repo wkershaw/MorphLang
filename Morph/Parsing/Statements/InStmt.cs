@@ -1,14 +1,15 @@
 using Morph.Scanning;
 using Morph.Parsing.Visitors;
+using Morph.Parsing.Expressions;
 
 namespace Morph.Parsing.Statements;
 
 internal class InStmt : Stmt
 {
-    public Token Type { get; private set; }
+    public Expr Type { get; private set; }
     public Token Name { get; private set; }
 
-    public InStmt(Token type, Token name)
+    public InStmt(Expr type, Token name)
     {
         Type = type;
         Name = name;

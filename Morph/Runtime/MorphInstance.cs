@@ -4,9 +4,10 @@ namespace Morph.Runtime;
 
 internal class MorphInstance
 {
-    private readonly MorphClass _class;
-    private readonly Dictionary<string, object?> _fields;
-      public MorphInstance(MorphClass mClass)
+    protected readonly MorphClass _class;
+    protected readonly Dictionary<string, object?> _fields;
+     
+	public MorphInstance(MorphClass mClass)
     {
         _class = mClass;
         _fields = new Dictionary<string, object?>();

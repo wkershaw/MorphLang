@@ -5,7 +5,11 @@ var url = "/test?name=will&greeting=greeting2";
 var body = """
 {
     "greeting1" : "hi",
-    "greeting2" : "hello"
+    "greeting2" : "hello",
+    "nested" : {
+        "value1" : 123,
+        "value2" : "abc"
+    }
 }
 """;
 

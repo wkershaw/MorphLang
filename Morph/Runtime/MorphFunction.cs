@@ -3,7 +3,7 @@ using Morph.Scanning;
 
 namespace Morph.Runtime;
 
-internal class MorphFunction : IMorphCallable
+internal class MorphFunction : IMorphInstanceCallable
 {
     private readonly FunctionStmt _declaration;
     private readonly Environment _closure;
@@ -49,7 +49,7 @@ internal class MorphFunction : IMorphCallable
         return null;
     }
 
-    public MorphFunction Bind(MorphInstance instance)
+    public IMorphCallable Bind(MorphInstance instance)
     {
         Environment environment = new Environment(_closure);
         environment.Define("this", instance);

@@ -3,11 +3,11 @@ namespace Morph.Runtime;
 
 internal class MorphClass : IMorphCallable
 {
-    private readonly Dictionary<string, MorphFunction> _methods;
+    protected readonly Dictionary<string, IMorphInstanceCallable> _methods;
     public int Arity => CalculateArity();
     public string Name { get; private init; }
 
-    public MorphClass(string name, Dictionary<string, MorphFunction> methods)
+    public MorphClass(string name, Dictionary<string, IMorphInstanceCallable> methods)
     {
         _methods = methods;
         Name = name;
@@ -17,18 +17,18 @@ internal class MorphClass : IMorphCallable
     {
         var instance = new MorphInstance(this);
 
-        MorphFunction? initialiser = FindMethod("init");
+		IMorphInstanceCallable? initialiser = FindMethod("init");
         if (initialiser is not null)
         {
-            initialiser.Bind(instance).Call(interpreter, arguments);
+            return initialiser.Bind(instance).Call(interpreter, arguments);
         }
 
         return instance;
     }
 
-    public MorphFunction? FindMethod(string name)
+    public IMorphInstanceCallable? FindMethod(string name)
     {
-        if (_methods.TryGetValue(name, out MorphFunction? method))
+        if (_methods.TryGetValue(name, out IMorphInstanceCallable? method))
         {
             return method;
         }
@@ -43,7 +43,7 @@ internal class MorphClass : IMorphCallable
 
     private int CalculateArity()
     {
-        MorphFunction? initialiser = FindMethod("init");
+		IMorphInstanceCallable? initialiser = FindMethod("init");
         if (initialiser is not null)
         {
             return initialiser.Arity;

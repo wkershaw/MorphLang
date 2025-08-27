@@ -27,7 +27,7 @@ internal enum TokenType
     Class, This,
 
     // In Declaration
-    In, Json, Url,
+    In,
 
     Eof
 }

@@ -20,9 +20,7 @@ internal class Scanner
         { "while", TokenType.While },
         { "in", TokenType.In },
         { "class", TokenType.Class },
-        { "this", TokenType.This },
-        { "JSON", TokenType.Json },
-        { "URL", TokenType.Url }
+        { "this", TokenType.This }
     };
 
 

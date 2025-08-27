@@ -5,6 +5,7 @@ using Morph.Parsing.Expressions;
 using Morph.Parsing.Statements;
 using Morph.Parsing.Visitors;
 using Morph.Runtime.NativeFunctions;
+using Morph.Runtime.NativeTypes;
 using Morph.Scanning;
 
 namespace Morph.Runtime;
@@ -12,7 +13,6 @@ namespace Morph.Runtime;
 internal class Interpreter : IExpressionVisitor<object?>, IStmtVisitor<object?>
 {
     private Dictionary<string, string> _inputs;
-    public Dictionary<string, object?> ParsedInputs { get; private set; }
 
     public Environment Globals { get; private set; }
     private Environment _environment;
@@ -21,7 +21,6 @@ internal class Interpreter : IExpressionVisitor<object?>, IStmtVisitor<object?>
     public Interpreter()
     {
         _inputs = new Dictionary<string, string>();
-        ParsedInputs = new Dictionary<string, object?>();
 
         Globals = new Environment();
 
@@ -29,6 +28,7 @@ internal class Interpreter : IExpressionVisitor<object?>, IStmtVisitor<object?>
         Globals.Define("Write", new WriteCallable());
         Globals.Define("Debug", new DebugCallable());
         Globals.Define("WriteLine", new WriteLineCallable());
+		Globals.Define("Json", new Json());
 
         _environment = Globals;
         _locals = new Dictionary<Expr, int>();
@@ -97,7 +97,7 @@ internal class Interpreter : IExpressionVisitor<object?>, IStmtVisitor<object?>
     {
         _environment.Define(statement.Name.Lexeme, null);
 
-        var methods = new Dictionary<string, MorphFunction>();
+        var methods = new Dictionary<string, IMorphInstanceCallable>();
 
         foreach (FunctionStmt method in statement.Methods)
         {
@@ -124,40 +124,28 @@ internal class Interpreter : IExpressionVisitor<object?>, IStmtVisitor<object?>
 
     public object? Visit(InStmt statement)
     {
-        IMorphIndexable input = statement.Type.Type switch
-        {
-            TokenType.Json => JsonInput(statement),
-            TokenType.Url => UrlInput(statement),
-            _ => throw new RuntimeException(statement.Type, "Unsupported input type.")
-        };
-
-        _environment.Define(statement.Name.Lexeme, input);
-        return null;
-    }
-
-    private MorphJsonInput JsonInput(InStmt statement)
-    {
-        if (!_inputs.TryGetValue(statement.Name.Lexeme, out string? jsonString))
+        if (!_inputs.TryGetValue(statement.Name.Lexeme, out string? inputString))
         {
             throw new RuntimeException(statement.Name, $"Input '{statement.Name.Lexeme}' not found.");
         }
 
-        var json = JsonSerializer.Deserialize<JsonObject>(jsonString);
-        ParsedInputs[statement.Name.Lexeme] = json;
+        object? callee = Evaluate(statement.Type);
 
-        return new MorphJsonInput(this, statement);
-    }
+        List<object?> arguments = [inputString];
 
-    private MorphUrlInput UrlInput(InStmt statement)
-    {
-        if (!_inputs.TryGetValue(statement.Name.Lexeme, out string? urlString))
+        if (callee is not null && callee is IMorphCallable function)
         {
-            throw new RuntimeException(statement.Name, $"Input '{statement.Name.Lexeme}' not found");
+            if (function.Arity != 1)
+            {
+                throw new RuntimeException(statement.Name, $"{statement.Name.Lexeme} does not have a constructor that takes 1 argument.");
+            }
+
+            var input = function.Call(this, arguments);
+            _environment.Define(statement.Name.Lexeme, input);
+			return input;
         }
 
-        ParsedInputs[statement.Name.Lexeme] = urlString;
-
-        return new MorphUrlInput(this, statement);
+        throw new RuntimeException(statement.Name, $"Input type '{statement.Type}' is not valid.");
     }
 
     public object? Visit(ExpressionStmt statement)

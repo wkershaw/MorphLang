@@ -1,17 +1,3 @@
-class testClass
-{
-    init() {
-        this.name = "This is a test";
-        this.num = 42;
-    }
+in Json body;
 
-    testMethod() {
-        WriteLine(this.num);
-        return this.name;
-    }
-}
-
-var obj = testClass();
-obj.name = "Changed name";
-obj.num = 100;
-WriteLine(obj.testMethod());
+WriteLine(body["nested"]["value2"]); // Outputs: abc

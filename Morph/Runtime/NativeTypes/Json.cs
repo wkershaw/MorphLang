@@ -1,7 +1,5 @@
-﻿using Morph.Runtime.NativeFunctions;
-using System.Text.Json;
+﻿using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Xml.Linq;
 
 namespace Morph.Runtime.NativeTypes;
 
@@ -48,7 +46,7 @@ internal class Json : MorphClass
 
 	public class JsonInstance : MorphInstance, IMorphIndexable
 	{
-		private JsonNode? _json;
+		private readonly JsonNode? _json;
 
 		public JsonInstance(MorphClass mClass, string jsonString) : base(mClass)
 		{

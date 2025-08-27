@@ -29,6 +29,7 @@ internal class Interpreter : IExpressionVisitor<object?>, IStmtVisitor<object?>
         Globals.Define("Debug", new DebugCallable());
         Globals.Define("WriteLine", new WriteLineCallable());
 		Globals.Define("Json", new Json());
+        Globals.Define("Url", new Url());
 
         _environment = Globals;
         _locals = new Dictionary<Expr, int>();

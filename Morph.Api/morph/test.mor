@@ -1,3 +1,5 @@
 in Json body;
 
-WriteLine(body["nested"]["value2"]); // Outputs: abc
+var query3 = "hello";
+
+WriteLine(body);

@@ -1,5 +1,12 @@
-in Json body;
+class MyClass
+{
+    init()
+    {
+        this.x = 42;
+    }
 
-var query3 = "hello";
-
-WriteLine(body);
+    myMethod()
+    {
+        WriteLine(this.x);
+    }
+}

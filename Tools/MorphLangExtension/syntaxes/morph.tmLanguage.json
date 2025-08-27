@@ -45,7 +45,23 @@
 				},
 				{
 					"name": "support.type.morph",
-					"match": "\\b(JSON|URL)\\b"
+					"match": "\\b(Json|Url)\\b"
+				},
+				{
+					"name": "keyword.declaration.class.morph",
+					"match": "\\bclass\\b"
+				},
+				{
+					"name": "entity.name.function.constructor.morph",
+					"match": "\\binit\\b"
+				},
+				{
+					"name": "variable.language.this.morph",
+					"match": "\\bthis\\b"
+				},
+				{
+					"name": "keyword.declaration.function.morph",
+					"match": "\\bfun\\b"
 				}
 			]
 		},

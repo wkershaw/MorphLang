@@ -1,13 +1,5 @@
 in Json body;
 in Url url;
+in Headers headers;
 
-WriteLine("Hello from Morph!");
-WriteLine(url.urlString);
-WriteLine(url.path);
-WriteLine(url.query);
-WriteLine(url.localPath);
-
-WriteLine(url[-4]);
-
-SetHeader("X-Custom-Header", "MyValue");
-SetResponseCode(201);
+WriteLine(headers["Content-Type"]);

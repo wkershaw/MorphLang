@@ -32,7 +32,8 @@ app.MapPost("/{url}", async (string url, HttpContext httpContext, HttpRequest ht
 	var inputs = new Dictionary<string, string>()
 	{
 		{ "body", json.ToJsonString() },
-		{ "url", httpContext.Request.Host + httpContext.Request.Path + httpContext.Request.QueryString }
+		{ "url", httpContext.Request.Host + httpContext.Request.Path + httpContext.Request.QueryString },
+		{ "headers", string.Join(";", httpContext.Request.Headers.Select(h => $"{h.Key}:{h.Value}")) }
 	};
 
 	var stdOut = new StringBuilder();

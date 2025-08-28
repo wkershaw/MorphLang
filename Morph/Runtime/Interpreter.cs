@@ -32,6 +32,7 @@ internal class Interpreter : IExpressionVisitor<object?>, IStmtVisitor<object?>
         Globals.Define("SetResponseCode", new SetResponseCodeCallable());
 		Globals.Define("Json", new Json());
         Globals.Define("Url", new Url());
+        Globals.Define("Headers", new Headers());
 
         _environment = Globals;
         _locals = new Dictionary<Expr, int>();

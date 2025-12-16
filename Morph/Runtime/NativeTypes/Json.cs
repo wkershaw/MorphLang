@@ -50,7 +50,7 @@ internal class Json : MorphClass
 
 		public JsonInstance(MorphClass mClass, string jsonString) : base(mClass)
 		{
-			_json = JsonSerializer.Deserialize<JsonNode>(jsonString) 
+			_json = JsonSerializer.Deserialize<JsonNode>(jsonString)
 				?? throw new RuntimeException(null, "Could not parse JSON");
 		}
 
@@ -83,6 +83,7 @@ internal class Json : MorphClass
 
 			return new JsonInstance(_class, value);
 		}
+
 		public override string ToString()
 		{
 			return _json?.ToString() ?? "";

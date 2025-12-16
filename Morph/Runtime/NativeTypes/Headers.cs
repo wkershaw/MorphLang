@@ -1,7 +1,4 @@
-﻿using System.Text.Json;
-using System.Text.Json.Nodes;
-
-namespace Morph.Runtime.NativeTypes;
+﻿namespace Morph.Runtime.NativeTypes;
 
 internal class Headers : MorphClass
 {

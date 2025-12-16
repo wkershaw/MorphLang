@@ -121,13 +121,13 @@ internal class Resolver : IExpressionVisitor<object?>, IStmtVisitor<object?>
 
     public object? Visit(ReturnStmt statement)
     {
-        if (_currentFunction == FunctionType.None)
-        {
-            Morph.Error(statement.Keyword, "Can't return from top level code");
-        }
-
         if (statement.Value is not null)
         {
+            if (_currentFunction == FunctionType.None)
+            {
+                Morph.Error(statement.Keyword, "Can't return a value from top level code");
+            }
+            
             if (_currentFunction == FunctionType.Initialiser)
             {
                 Morph.Error(statement.Keyword, "Can't return a value from an initialiser");
@@ -270,6 +270,7 @@ internal class Resolver : IExpressionVisitor<object?>, IStmtVisitor<object?>
         if (scope.ContainsKey(name.Lexeme))
         {
             Morph.Error(name, "Already a variable with this name in scope");
+            return;
         }
 
         scope.Add(name.Lexeme, false);

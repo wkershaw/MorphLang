@@ -24,7 +24,6 @@ internal class Interpreter : IExpressionVisitor<object?>, IStmtVisitor<object?>
 
         Globals = new Environment();
 
-        Globals.Define("Clock", new ClockCallable());
         Globals.Define("Write", new WriteCallable());
         Globals.Define("Debug", new DebugCallable());
         Globals.Define("WriteLine", new WriteLineCallable());
@@ -33,6 +32,8 @@ internal class Interpreter : IExpressionVisitor<object?>, IStmtVisitor<object?>
 		Globals.Define("Json", new Json());
         Globals.Define("Url", new Url());
         Globals.Define("Headers", new Headers());
+        Globals.Define("Clock", new Clock());
+        Globals.Define("Random", new NativeTypes.Random());
 
         _environment = Globals;
         _locals = new Dictionary<Expr, int>();
@@ -52,6 +53,10 @@ internal class Interpreter : IExpressionVisitor<object?>, IStmtVisitor<object?>
             {
                 Execute(statement);
             }
+        }
+        catch (Return)
+        {
+            // Top level return hit, so just exit the program
         }
         catch (RuntimeException e)
         {

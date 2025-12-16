@@ -1,5 +1,44 @@
-in Json body;
-in Url url;
 in Headers headers;
 
-WriteLine(headers["Content-Type"]);
+var cdpApiKey = headers["CDP-Api-Key"];
+
+var random = Random();
+var clock = Clock();
+var timestamp = clock.toFormattedString("s") + "Z";
+
+if (cdpApiKey != "123")
+{
+
+	var unauthorisedResponse = $"
+	{
+		\"timestamp\": \"[timestamp]\",
+		\"status\": 400,
+		\"error\": \"Access Denied\",
+		\"path\": \"/api/latest/notice/submission/submit\"
+	}";
+
+	WriteLine(unauthorisedResponse);
+	SetResponseCode(400);
+	return;
+}
+
+var successResponse = $"
+{
+	\"submission_id\": \"[clock.toFormattedString("yyyyMMdd")]-[random.between(1, 999999)]\",
+	\"received_at\": \"[timestamp]\",
+	\"status\": \"RECEIVED\",
+	\"reason_code\": null,
+	\"status_updated_at\": \"[timestamp]\",
+	\"no_doc_ext\": null,
+	\"form\": null,
+	\"languages\": \[\],
+	\"publication_info\": null,
+	\"technical_validation_report\": null,
+	\"validation_rules_report\": null,
+	\"quality_control_report\": null,
+	\"ref_submission_id\": null,
+	\"ref_no_doc_ojs\": null
+}";
+
+WriteLine(successResponse);
+SetResponseCode(200);

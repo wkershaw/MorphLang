@@ -1,6 +1,5 @@
 using Morph.Parsing;
 using Morph.Parsing.Statements;
-using Morph.Parsing.Visitors;
 using Morph.Runtime;
 using Morph.Scanning;
 
@@ -30,8 +29,7 @@ public static class Morph
 
     private static void Run(string source, Dictionary<string, string> inputs)
     {
-        var scanner = new Scanner(source);
-        List<Token> tokens = scanner.ScanTokens();
+        List<Token> tokens = Scanner.ScanTokens(source);
 
         var parser = new Parser(tokens);
         List<Stmt> statements = parser.Parse();

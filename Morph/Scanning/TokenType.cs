@@ -1,5 +1,8 @@
 namespace Morph.Scanning;
 
+/// <summary>
+/// Represents the types of token that can be parsed by the scanner
+/// </summary>
 internal enum TokenType
 {
     // Single-character tokens.

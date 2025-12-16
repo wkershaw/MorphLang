@@ -5,7 +5,7 @@ namespace Morph.Parsing.Expressions;
 
 internal record AssignExpr(Token Name, Expr Value) : Expr
 {
-	public override T Accept<T>(IExpressionVisitor<T> visitor)
+	public override T Accept<T>(IExprVisitor<T> visitor)
 	{
 		return visitor.Visit(this);
 	}
@@ -13,7 +13,7 @@ internal record AssignExpr(Token Name, Expr Value) : Expr
 
 internal record BinaryExpr(Expr Left, Token Op, Expr Right) : Expr
 {
-	public override T Accept<T>(IExpressionVisitor<T> visitor)
+	public override T Accept<T>(IExprVisitor<T> visitor)
 	{
 		return visitor.Visit(this);
 	}
@@ -21,7 +21,7 @@ internal record BinaryExpr(Expr Left, Token Op, Expr Right) : Expr
 
 internal record CallExpr(Expr Callee, Token Paren, List<Expr> Arguments) : Expr
 {
-	public override T Accept<T>(IExpressionVisitor<T> visitor)
+	public override T Accept<T>(IExprVisitor<T> visitor)
 	{
 		return visitor.Visit(this);
 	}
@@ -29,7 +29,7 @@ internal record CallExpr(Expr Callee, Token Paren, List<Expr> Arguments) : Expr
 
 internal record GetExpr(Expr Object, Token Name) : Expr
 {
-	public override T Accept<T>(IExpressionVisitor<T> visitor)
+	public override T Accept<T>(IExprVisitor<T> visitor)
 	{
 		return visitor.Visit(this);
 	}
@@ -37,7 +37,7 @@ internal record GetExpr(Expr Object, Token Name) : Expr
 
 internal record GroupingExpr(Expr Expression) : Expr
 {
-	public override T Accept<T>(IExpressionVisitor<T> visitor)
+	public override T Accept<T>(IExprVisitor<T> visitor)
 	{
 		return visitor.Visit(this);
 	}
@@ -45,7 +45,7 @@ internal record GroupingExpr(Expr Expression) : Expr
 
 internal record IndexExpr(Expr Callee, Token Bracket, Expr Index) : Expr
 {
-	public override T Accept<T>(IExpressionVisitor<T> visitor)
+	public override T Accept<T>(IExprVisitor<T> visitor)
 	{
 		return visitor.Visit(this);
 	}
@@ -53,7 +53,7 @@ internal record IndexExpr(Expr Callee, Token Bracket, Expr Index) : Expr
 
 internal record InterpolatedStringExpr(List<Expr> Parts) : Expr
 {
-	public override T Accept<T>(IExpressionVisitor<T> visitor)
+	public override T Accept<T>(IExprVisitor<T> visitor)
 	{
 		return visitor.Visit(this);
 	}
@@ -61,7 +61,7 @@ internal record InterpolatedStringExpr(List<Expr> Parts) : Expr
 
 internal record LiteralExpr(object? Value) : Expr
 {
-	public override T Accept<T>(IExpressionVisitor<T> visitor)
+	public override T Accept<T>(IExprVisitor<T> visitor)
 	{
 		return visitor.Visit(this);
 	}
@@ -69,7 +69,7 @@ internal record LiteralExpr(object? Value) : Expr
 
 internal record LogicalExpr(Expr Left, Token Op, Expr Right) : Expr
 {
-	public override T Accept<T>(IExpressionVisitor<T> visitor)
+	public override T Accept<T>(IExprVisitor<T> visitor)
 	{
 		return visitor.Visit(this);
 	}
@@ -77,7 +77,7 @@ internal record LogicalExpr(Expr Left, Token Op, Expr Right) : Expr
 
 internal record SetExpr(Expr Object, Token Name, Expr Value) : Expr
 {
-	public override T Accept<T>(IExpressionVisitor<T> visitor)
+	public override T Accept<T>(IExprVisitor<T> visitor)
 	{
 		return visitor.Visit(this);
 	}
@@ -85,7 +85,7 @@ internal record SetExpr(Expr Object, Token Name, Expr Value) : Expr
 
 internal record ThisExpr(Token Keyword) : Expr
 {
-	public override T Accept<T>(IExpressionVisitor<T> visitor)
+	public override T Accept<T>(IExprVisitor<T> visitor)
 	{
 		return visitor.Visit(this);
 	}
@@ -93,7 +93,7 @@ internal record ThisExpr(Token Keyword) : Expr
 
 internal record UnaryExpr(Token Op, Expr Right) : Expr
 {
-	public override T Accept<T>(IExpressionVisitor<T> visitor)
+	public override T Accept<T>(IExprVisitor<T> visitor)
 	{
 		return visitor.Visit(this);
 	}
@@ -101,7 +101,7 @@ internal record UnaryExpr(Token Op, Expr Right) : Expr
 
 internal record VariableExpr(Token Name) : Expr
 {
-	public override T Accept<T>(IExpressionVisitor<T> visitor)
+	public override T Accept<T>(IExprVisitor<T> visitor)
 	{
 		return visitor.Visit(this);
 	}

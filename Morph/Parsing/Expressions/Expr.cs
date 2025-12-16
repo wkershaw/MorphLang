@@ -4,5 +4,5 @@ namespace Morph.Parsing.Expressions;
 
 internal abstract record Expr
 {
-    public abstract T Accept<T>(IExpressionVisitor<T> visitor);
+    public abstract T Accept<T>(IExprVisitor<T> visitor);
 }

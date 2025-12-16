@@ -10,7 +10,7 @@ using Morph.Scanning;
 
 namespace Morph.Runtime;
 
-internal class Interpreter : IExpressionVisitor<object?>, IStmtVisitor<object?>
+internal class Interpreter : IExprVisitor<object?>, IStmtVisitor<object?>
 {
     private Dictionary<string, string> _inputs;
 

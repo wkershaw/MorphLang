@@ -5,7 +5,7 @@ using Morph.Scanning;
 
 namespace Morph.Runtime;
 
-internal class Resolver : IExpressionVisitor<object?>, IStmtVisitor<object?>
+internal class Resolver : IExprVisitor<object?>, IStmtVisitor<object?>
 {
     private enum FunctionType
     {

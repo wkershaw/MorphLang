@@ -2,7 +2,7 @@ using Morph.Parsing.Expressions;
 
 namespace Morph.Parsing.Visitors
 {
-    internal interface IExpressionVisitor<T>
+    internal interface IExprVisitor<T>
     {
         T Visit(BinaryExpr expression);
 

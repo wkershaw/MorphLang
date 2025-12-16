@@ -2,7 +2,7 @@ using Morph.Parsing.Visitors;
 
 namespace Morph.Parsing.Expressions;
 
-internal abstract class Expr
+internal abstract record Expr
 {
     public abstract T Accept<T>(IExpressionVisitor<T> visitor);
 }

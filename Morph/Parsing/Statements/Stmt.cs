@@ -2,7 +2,7 @@
 
 namespace Morph.Parsing.Statements;
 
-internal abstract class Stmt
+internal abstract record Stmt
 {
     public abstract T Accept<T>(IStmtVisitor<T> visitor);
 }

@@ -16,11 +16,11 @@ internal class Parser
 
     public List<Stmt> Parse()
     {
-        List<Stmt> statements = new List<Stmt>();
+        List<Stmt> statements = [];
 
         while (!IsAtEnd())
         {
-            var statement = Declaration();
+            Stmt? statement = Declaration();
             if (statement != null)
             {
                 statements.Add(statement);
@@ -34,12 +34,22 @@ internal class Parser
     {
         try
         {
-            if (Match(TokenType.Class)) return ClassDeclaration();
-            if (Match(TokenType.Fun)) return Function("function");
-            if (Match(TokenType.Var)) return VarDeclaration();
-            if (Match(TokenType.In)) return InDeclaration();
+            if (Match(TokenType.Class))
+            {
+                return ClassDeclaration();
+            }
 
-            return Statement();
+            if (Match(TokenType.Fun))
+            {
+                return Function("function");
+            }
+
+            if (Match(TokenType.Var))
+            {
+                return VarDeclaration();
+            }
+
+            return Match(TokenType.In) ? InDeclaration() : Statement();
         }
         catch (ParseException)
         {
@@ -52,8 +62,8 @@ internal class Parser
     {
         Token name = Consume(TokenType.Identifier, $"Expect {kind} name.");
 
-        Consume(TokenType.LeftParen, $"Expect '(' after {kind} name.");
-        List<Token> parameters = new List<Token>();
+        _ = Consume(TokenType.LeftParen, $"Expect '(' after {kind} name.");
+        List<Token> parameters = [];
         if (!Check(TokenType.RightParen))
         {
             do
@@ -68,13 +78,13 @@ internal class Parser
             while (Match(TokenType.Comma));
         }
 
-        Consume(TokenType.RightParen, $"Expect ')' after {kind} parameters.");
-        Consume(TokenType.LeftBrace, $"Expect '{{' before {kind} body.");
+        _ = Consume(TokenType.RightParen, $"Expect ')' after {kind} parameters.");
+        _ = Consume(TokenType.LeftBrace, $"Expect '{{' before {kind} body.");
         List<Stmt> body = BlockStatement();
         return new FunctionStmt(name, parameters, body);
     }
 
-    private Stmt VarDeclaration()
+    private VarStmt VarDeclaration()
     {
         Token name = Consume(TokenType.Identifier, "Expect variable name.");
 
@@ -84,27 +94,27 @@ internal class Parser
             initialiser = Expression();
         }
 
-        Consume(TokenType.Semicolon, "Expect ';' after variable declaration.");
+        _ = Consume(TokenType.Semicolon, "Expect ';' after variable declaration.");
         return new VarStmt(name, initialiser);
     }
 
-    private Stmt ClassDeclaration()
+    private ClassStmt ClassDeclaration()
     {
         Token name = Consume(TokenType.Identifier, "Expect class name");
-        Consume(TokenType.LeftBrace, "Expect '{' before class body");
+        _ = Consume(TokenType.LeftBrace, "Expect '{' before class body");
 
-        List<FunctionStmt> methods = new List<FunctionStmt>();
+        List<FunctionStmt> methods = [];
         while (!Check(TokenType.RightBrace) && !IsAtEnd())
         {
             methods.Add(Function("method"));
         }
 
-        Consume(TokenType.RightBrace, "Expect '}' after class body");
+        _ = Consume(TokenType.RightBrace, "Expect '}' after class body");
 
         return new ClassStmt(name, methods);
     }
 
-    private Stmt InDeclaration()
+    private InStmt InDeclaration()
     {
         if (!Match(TokenType.Identifier))
         {
@@ -116,7 +126,7 @@ internal class Parser
 
         Token name = Consume(TokenType.Identifier, "Expect 'in' declaration name.");
 
-        Consume(TokenType.Semicolon, "Expect ';' after 'in' declaration.");
+        _ = Consume(TokenType.Semicolon, "Expect ';' after 'in' declaration.");
         return new InStmt(type, name);
     }
 
@@ -151,30 +161,25 @@ internal class Parser
         return ExpressionStatement();
     }
 
-    private Stmt ExpressionStatement()
+    private ExpressionStmt ExpressionStatement()
     {
         Expr expr = Expression();
-        Consume(TokenType.Semicolon, "Expect ';' after expression.");
+        _ = Consume(TokenType.Semicolon, "Expect ';' after expression.");
         return new ExpressionStmt(expr);
     }
 
     private Stmt ForStatement()
     {
-        Consume(TokenType.LeftParen, "Expect '()' after 'for'.");
+        _ = Consume(TokenType.LeftParen, "Expect '()' after 'for'.");
 
-        Stmt? initializer = null;
-
+        Stmt? initializer;
         if (Match(TokenType.Semicolon))
         {
             initializer = null;
         }
-        else if (Match(TokenType.Var))
-        {
-            initializer = VarDeclaration();
-        }
         else
         {
-            initializer = ExpressionStatement();
+            initializer = Match(TokenType.Var) ? VarDeclaration() : ExpressionStatement();
         }
 
         Expr? condition = null;
@@ -183,14 +188,14 @@ internal class Parser
             condition = Expression();
         }
 
-        Consume(TokenType.Semicolon, "Expect ';' after loop condition.");
+        _ = Consume(TokenType.Semicolon, "Expect ';' after loop condition.");
 
         Expr? increment = null;
         if (!Check(TokenType.RightParen))
         {
             increment = Expression();
         }
-        Consume(TokenType.RightParen, "Expect ')' after for clauses.");
+        _ = Consume(TokenType.RightParen, "Expect ')' after for clauses.");
         Stmt body = Statement();
 
 
@@ -198,30 +203,27 @@ internal class Parser
 
         if (increment != null)
         {
-            body = new BlockStmt(new List<Stmt> { body, new ExpressionStmt(increment) });
+            body = new BlockStmt([body, new ExpressionStmt(increment)]);
         }
 
-        if (condition is null)
-        {
-            condition = new LiteralExpr(true);
-        }
+        condition ??= new LiteralExpr(true);
 
         body = new WhileStmt(condition, body);
 
         if (initializer != null)
         {
-            body = new BlockStmt(new List<Stmt> { initializer, body });
+            body = new BlockStmt([initializer, body]);
         }
 
         return body;
     }
 
-    private Stmt IfStatement()
+    private IfStmt IfStatement()
     {
-        Consume(TokenType.LeftParen, "Expect '(' after 'if'.");
+        _ = Consume(TokenType.LeftParen, "Expect '(' after 'if'.");
         Expr condition = Expression();
 
-        Consume(TokenType.RightParen, "Expect ')' after if condition.");
+        _ = Consume(TokenType.RightParen, "Expect ')' after if condition.");
         Stmt thenBranch = Statement();
 
         Stmt? elseBranch = null;
@@ -233,7 +235,7 @@ internal class Parser
         return new IfStmt(condition, thenBranch, elseBranch);
     }
 
-    private Stmt ReturnStatement()
+    private ReturnStmt ReturnStatement()
     {
         Token keyword = Previous();
         Expr? value = null;
@@ -243,15 +245,15 @@ internal class Parser
             value = Expression();
         }
 
-        Consume(TokenType.Semicolon, "Expect ';' after return value.");
+        _ = Consume(TokenType.Semicolon, "Expect ';' after return value.");
         return new ReturnStmt(keyword, value);
     }
 
-    private Stmt WhileStatement()
+    private WhileStmt WhileStatement()
     {
-        Consume(TokenType.LeftParen, "Expect '(' after 'while'.");
+        _ = Consume(TokenType.LeftParen, "Expect '(' after 'while'.");
         Expr condition = Expression();
-        Consume(TokenType.RightParen, "Expect ')' after while condition.");
+        _ = Consume(TokenType.RightParen, "Expect ')' after while condition.");
 
         Stmt body = Statement();
         return new WhileStmt(condition, body);
@@ -259,7 +261,7 @@ internal class Parser
 
     private List<Stmt> BlockStatement()
     {
-        List<Stmt> statements = new List<Stmt>();
+        List<Stmt> statements = [];
 
         while (!Check(TokenType.RightBrace) && !IsAtEnd())
         {
@@ -270,7 +272,7 @@ internal class Parser
             }
         }
 
-        Consume(TokenType.RightBrace, "Expect '}' after block.");
+        _ = Consume(TokenType.RightBrace, "Expect '}' after block.");
         return statements;
     }
 
@@ -423,9 +425,9 @@ internal class Parser
         return expr;
     }
 
-    private Expr FinishCall(Expr callee)
+    private CallExpr FinishCall(Expr callee)
     {
-        List<Expr> arguments = new List<Expr>();
+        List<Expr> arguments = [];
 
         if (!Check(TokenType.RightParen))
         {
@@ -464,7 +466,7 @@ internal class Parser
         return expr;
     }
 
-    private Expr FinishIndex(Expr callee)
+    private IndexExpr FinishIndex(Expr callee)
     {
         Expr index = Expression();
         Token bracket = Consume(TokenType.RightSquareBracket, "Expect ']' after index expression.");
@@ -473,9 +475,20 @@ internal class Parser
 
     private Expr Primary()
     {
-        if (Match(TokenType.False)) return new LiteralExpr(false);
-        if (Match(TokenType.True)) return new LiteralExpr(true);
-        if (Match(TokenType.Nil)) return new LiteralExpr(null);
+        if (Match(TokenType.False))
+        {
+            return new LiteralExpr(false);
+        }
+
+        if (Match(TokenType.True))
+        {
+            return new LiteralExpr(true);
+        }
+
+        if (Match(TokenType.Nil))
+        {
+            return new LiteralExpr(null);
+        }
 
         if (Match(TokenType.Number, TokenType.String))
         {
@@ -500,16 +513,16 @@ internal class Parser
         if (Match(TokenType.LeftParen))
         {
             Expr expr = Expression();
-            Consume(TokenType.RightParen, "Expect ')' after expression.");
+            _ = Consume(TokenType.RightParen, "Expect ')' after expression.");
             return new GroupingExpr(expr);
         }
 
         throw Error(Peek(), $"Expect expression, but got: {Peek().Type}");
     }
 
-    private Expr InterpolatedString()
+    private InterpolatedStringExpr InterpolatedString()
     {
-        var parts = new List<Expr>();     
+        var parts = new List<Expr>();
 
         while (!Check(TokenType.InterpolatedStringEnd) && !IsAtEnd())
         {
@@ -522,7 +535,7 @@ internal class Parser
             {
                 // Expression part inside [ ]
                 Expr expr = Expression();
-                Consume(TokenType.InterpolatedStringExpressionEnd, "Expect ']' after interpolated expression.");
+                _ = Consume(TokenType.InterpolatedStringExpressionEnd, "Expect ']' after interpolated expression.");
                 parts.Add(expr);
             }
             else
@@ -532,24 +545,28 @@ internal class Parser
         }
 
         // Consume InterpolatedStringEnd
-        Consume(TokenType.InterpolatedStringEnd, "Expect end of interpolated string.");
+        _ = Consume(TokenType.InterpolatedStringEnd, "Expect end of interpolated string.");
 
         return new InterpolatedStringExpr(parts);
     }
 
     private Token Advance()
     {
-        if (!IsAtEnd()) _current++;
+        if (!IsAtEnd())
+        {
+            _current++;
+        }
+
         return Previous();
     }
 
     private bool Match(params TokenType[] types)
     {
-        foreach (var type in types)
+        foreach (TokenType type in types)
         {
             if (Check(type))
             {
-                Advance();
+                _ = Advance();
                 return true;
             }
         }
@@ -558,14 +575,12 @@ internal class Parser
 
     private bool Check(TokenType type)
     {
-        if (IsAtEnd()) return false;
-        return Peek().Type == type;
+        return !IsAtEnd() && Peek().Type == type;
     }
 
     private Token Consume(TokenType type, string message)
     {
-        if (Check(type)) return Advance();
-        throw Error(Peek(), message);
+        return Check(type) ? Advance() : throw Error(Peek(), message);
     }
 
     private bool IsAtEnd()
@@ -575,7 +590,6 @@ internal class Parser
 
     private Token Peek()
     {
-		var x = _tokens[_current];
         return _tokens[_current];
     }
 
@@ -584,7 +598,7 @@ internal class Parser
         return _tokens[_current - 1];
     }
 
-    private Exception Error(Token token, string message)
+    private ParseException Error(Token token, string message)
     {
         Morph.Error(token, message);
         return new ParseException(token.Line, $"Error at line {token.Line}: {message}");
@@ -592,11 +606,14 @@ internal class Parser
 
     private void Synchronize()
     {
-        Advance();
+        _ = Advance();
 
         while (!IsAtEnd())
         {
-            if (Previous().Type == TokenType.Semicolon) return;
+            if (Previous().Type == TokenType.Semicolon)
+            {
+                return;
+            }
 
             switch (Peek().Type)
             {
@@ -609,7 +626,7 @@ internal class Parser
                     return;
             }
 
-            Advance();
+            _ = Advance();
         }
     }
 }

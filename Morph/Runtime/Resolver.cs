@@ -122,15 +122,10 @@ internal class Resolver : IExprVisitor<object?>, IStmtVisitor<object?>
     public object? Visit(ReturnStmt statement)
     {
         if (statement.Value is not null)
-        {
-            if (_currentFunction == FunctionType.None)
-            {
-                Morph.Error(statement.Keyword, "Can't return a value from top level code");
-            }
-            
+        {           
             if (_currentFunction == FunctionType.Initialiser)
             {
-                Morph.Error(statement.Keyword, "Can't return a value from an initialiser");
+                MorphRunner.Error(statement.Keyword, "Can't return a value from an initialiser");
             }
 
             Resolve(statement.Value);
@@ -159,7 +154,7 @@ internal class Resolver : IExprVisitor<object?>, IStmtVisitor<object?>
             && _scopes.Peek().TryGetValue(expression.Name.Lexeme, out bool finished)
             && finished == false)
         {
-            Morph.Error(expression.Name, "Can't read local variable in its own initialiser");
+            MorphRunner.Error(expression.Name, "Can't read local variable in its own initialiser");
         }
 
         ResolveLocal(expression, expression.Name);
@@ -209,7 +204,7 @@ internal class Resolver : IExprVisitor<object?>, IStmtVisitor<object?>
     {
         if (_currentClass == ClassType.None)
         {
-            Morph.Error(expression.Keyword, "Can't use 'this' outside of a class");
+            MorphRunner.Error(expression.Keyword, "Can't use 'this' outside of a class");
             return null;
         }
 
@@ -260,7 +255,7 @@ internal class Resolver : IExprVisitor<object?>, IStmtVisitor<object?>
 
     private void Declare(Token name)
     {
-        if (_scopes.Count() == 0)
+        if (_scopes.Count == 0)
         {
             return;
         }
@@ -269,7 +264,7 @@ internal class Resolver : IExprVisitor<object?>, IStmtVisitor<object?>
 
         if (scope.ContainsKey(name.Lexeme))
         {
-            Morph.Error(name, "Already a variable with this name in scope");
+            MorphRunner.Error(name, "Already a variable with this name in scope");
             return;
         }
 

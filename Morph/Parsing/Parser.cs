@@ -6,21 +6,18 @@ namespace Morph.Parsing;
 
 internal class Parser
 {
-    private readonly List<Token> _tokens;
-    private int _current = 0;
+	private const int FUNCTION_PARAMETER_LIMIT = 255;
 
-    public Parser(List<Token> tokens)
+    public static List<Stmt> Parse(List<Token> tokens)
     {
-        _tokens = tokens;
-    }
+        var tokenHelper = new ListHelper<Token>(tokens, Token.Empty);
+		var statements = new List<Stmt>();
 
-    public List<Stmt> Parse()
-    {
-        List<Stmt> statements = [];
+		tokenHelper.MoveNext();
 
-        while (!IsAtEnd())
+        while (!tokenHelper.IsAtEnd() && tokenHelper.Current.Type != TokenType.Eof)
         {
-            Stmt? statement = Declaration();
+            Stmt? statement = Declaration(tokenHelper);
             if (statement != null)
             {
                 statements.Add(statement);
@@ -30,186 +27,193 @@ internal class Parser
         return statements;
     }
 
-    private Stmt? Declaration()
+    private static Stmt? Declaration(ListHelper<Token> tokens)
     {
         try
         {
-            if (Match(TokenType.Class))
+            if (tokens.MatchAndConsume(t => t.Type, TokenType.Class))
             {
-                return ClassDeclaration();
+                return ClassDeclaration(tokens);
             }
 
-            if (Match(TokenType.Fun))
+            if (tokens.MatchAndConsume(t => t.Type, TokenType.Fun))
             {
-                return Function("function");
+                return Function(tokens, "function");
             }
 
-            if (Match(TokenType.Var))
+            if (tokens.MatchAndConsume(t => t.Type, TokenType.Var))
             {
-                return VarDeclaration();
+                return VarDeclaration(tokens);
             }
 
-            return Match(TokenType.In) ? InDeclaration() : Statement();
+			if (tokens.MatchAndConsume(t => t.Type, TokenType.In))
+			{
+				return InDeclaration(tokens);
+			}
+
+            return Statement(tokens);
         }
-        catch (ParseException)
+        catch (Exception e)
         {
-            Synchronize();
+			MorphRunner.Error(tokens.Current.Line, e.Message);
+            Synchronize(tokens);
             return null;
         }
     }
 
-    private FunctionStmt Function(string kind)
-    {
-        Token name = Consume(TokenType.Identifier, $"Expect {kind} name.");
+	private static ClassStmt ClassDeclaration(ListHelper<Token> tokens)
+	{
+		Token name = tokens.Consume(t => t.Type == TokenType.Identifier, "Invalid class name");
+		_ = tokens.Consume(t => t.Type == TokenType.LeftBrace, "Expected a '{' before class body");
 
-        _ = Consume(TokenType.LeftParen, $"Expect '(' after {kind} name.");
-        List<Token> parameters = [];
-        if (!Check(TokenType.RightParen))
-        {
+		List<FunctionStmt> methods = [];
+		while (!tokens.Match(t => t.Type, TokenType.RightBrace) && !tokens.IsAtEnd())
+		{
+			methods.Add(Function(tokens, "method"));
+		}
+
+		_ = tokens.Consume(t => t.Type == TokenType.RightBrace, "Expected a '}' after class body");
+
+		return new ClassStmt(name, methods);
+	}
+
+	private static FunctionStmt Function(ListHelper<Token> tokens, string kind)
+    {
+        Token name = tokens.Consume(t => t.Type == TokenType.Identifier, $"Expected a {kind} name.");
+
+        _ = tokens.Consume(t => t.Type == TokenType.LeftParen, $"Expected '(' after {kind} name.");
+        
+		List<Token> parameters = [];
+		
+		if (!tokens.Match(t => t.Type, TokenType.RightParen))
+		{
             do
             {
-                if (parameters.Count >= 255)
+                if (parameters.Count >= FUNCTION_PARAMETER_LIMIT)
                 {
-                    Morph.Error(Peek(), "Cannot have more than 255 parameters.");
+                    MorphRunner.Error(tokens.Peek(), $"Functions cannot have more than {FUNCTION_PARAMETER_LIMIT} parameters.");
                 }
 
-                parameters.Add(Consume(TokenType.Identifier, "Expect parameter name."));
+				Token parameter = tokens.Consume(t => t.Type == TokenType.Identifier, "Invalid parameter name");
+                parameters.Add(parameter);
             }
-            while (Match(TokenType.Comma));
-        }
+            while (tokens.MatchAndConsume(t => t.Type, TokenType.Comma));
+		}
 
-        _ = Consume(TokenType.RightParen, $"Expect ')' after {kind} parameters.");
-        _ = Consume(TokenType.LeftBrace, $"Expect '{{' before {kind} body.");
-        List<Stmt> body = BlockStatement();
-        return new FunctionStmt(name, parameters, body);
+        _ = tokens.Consume(t => t.Type == TokenType.RightParen, $"Expected a ')' after {kind} parameters.");
+        _ = tokens.Consume(t => t.Type == TokenType.LeftBrace, $"Expected '{{' before {kind} body.");
+        
+		List<Stmt> body = BlockStatement(tokens);
+        
+		return new FunctionStmt(name, parameters, body);
     }
 
-    private VarStmt VarDeclaration()
+    private static VarStmt VarDeclaration(ListHelper<Token> tokens)
     {
-        Token name = Consume(TokenType.Identifier, "Expect variable name.");
+        Token name = tokens.Consume(t => t.Type == TokenType.Identifier, "Invalid variable name.");
 
         Expr? initialiser = null;
-        if (Match(TokenType.Equal))
+
+        if (tokens.MatchAndConsume(t => t.Type, TokenType.Equal))
         {
-            initialiser = Expression();
+            initialiser = Expression(tokens);
         }
 
-        _ = Consume(TokenType.Semicolon, "Expect ';' after variable declaration.");
+        _ = tokens.Consume(t => t.Type == TokenType.Semicolon, "Expected a ';' after variable declaration.");
         return new VarStmt(name, initialiser);
     }
 
-    private ClassStmt ClassDeclaration()
+    private static InStmt InDeclaration(ListHelper<Token> tokens)
     {
-        Token name = Consume(TokenType.Identifier, "Expect class name");
-        _ = Consume(TokenType.LeftBrace, "Expect '{' before class body");
-
-        List<FunctionStmt> methods = [];
-        while (!Check(TokenType.RightBrace) && !IsAtEnd())
+        if (!tokens.MatchAndConsume(t => t.Type, TokenType.Identifier))
         {
-            methods.Add(Function("method"));
+			// TODO: better ex type here
+            throw new InvalidOperationException("Expect 'in' declaration type and name.");
         }
 
-        _ = Consume(TokenType.RightBrace, "Expect '}' after class body");
+		Token typeName = tokens.Consume(t => t.Type == TokenType.Identifier, "Invalid type for 'in' decleration");
+        Expr type = new VariableExpr(typeName);
 
-        return new ClassStmt(name, methods);
-    }
+        Token name = tokens.Consume(t => t.Type == TokenType.Identifier, "Invalid name for 'in' declaration");
 
-    private InStmt InDeclaration()
-    {
-        if (!Match(TokenType.Identifier))
-        {
-            throw Error(Previous(), "Expect 'in' declaration type and name.");
-        }
+        _ = tokens.Consume(t => t.Type == TokenType.Semicolon, "Expected a ';' after 'in' declaration.");
 
-        //Expr type = new CallExpr(new VariableExpr(Previous()), Previous(), new List<Expr>());
-        Expr type = new VariableExpr(Previous());
-
-        Token name = Consume(TokenType.Identifier, "Expect 'in' declaration name.");
-
-        _ = Consume(TokenType.Semicolon, "Expect ';' after 'in' declaration.");
         return new InStmt(type, name);
     }
 
-    private Stmt Statement()
+    private static Stmt Statement(ListHelper<Token> tokens)
     {
-        if (Match(TokenType.For))
+        if (tokens.MatchAndConsume(t => t.Type, TokenType.For))
         {
-            return ForStatement();
+            return ForStatement(tokens);
         }
 
-        if (Match(TokenType.If))
+        if (tokens.MatchAndConsume(t => t.Type, TokenType.If))
         {
-            return IfStatement();
+            return IfStatement(tokens);
         }
 
-        if (Match(TokenType.Return))
+		// Dont consume, so that the return statement can reference
+		// the token
+        if (tokens.Match(t => t.Type, TokenType.Return))
         {
-            return ReturnStatement();
+            return ReturnStatement(tokens);
         }
 
-        if (Match(TokenType.While))
+        if (tokens.MatchAndConsume(t => t.Type, TokenType.While))
         {
-            return WhileStatement();
+            return WhileStatement(tokens);
         }
 
-        if (Match(TokenType.LeftBrace))
+        if (tokens.MatchAndConsume(t => t.Type, TokenType.LeftBrace))
         {
             // Handle block statements
-            return new BlockStmt(BlockStatement());
+            return new BlockStmt(BlockStatement(tokens));
         }
 
-        return ExpressionStatement();
+        return ExpressionStatement(tokens);
     }
 
-    private ExpressionStmt ExpressionStatement()
+    private static Stmt ForStatement(ListHelper<Token> tokens)
     {
-        Expr expr = Expression();
-        _ = Consume(TokenType.Semicolon, "Expect ';' after expression.");
-        return new ExpressionStmt(expr);
-    }
+        _ = tokens.Consume(t => t.Type == TokenType.LeftParen, "Expected '(' after 'for'.");
 
-    private Stmt ForStatement()
-    {
-        _ = Consume(TokenType.LeftParen, "Expect '()' after 'for'.");
-
-        Stmt? initializer;
-        if (Match(TokenType.Semicolon))
+        Stmt? initializer = null;
+        if (!tokens.MatchAndConsume(t => t.Type, TokenType.Semicolon))
         {
-            initializer = null;
+            initializer = tokens.Match(t => t.Type, TokenType.Var) ? VarDeclaration(tokens) : ExpressionStatement(tokens);
         }
-        else
-        {
-            initializer = Match(TokenType.Var) ? VarDeclaration() : ExpressionStatement();
-        }
+		// Semicolon will be consumed by var decleration or expression, so no need to consume it here
 
         Expr? condition = null;
-        if (!Check(TokenType.Semicolon))
+        if (!tokens.Match(t => t.Type, TokenType.Semicolon))
         {
-            condition = Expression();
+            condition = Expression(tokens);
         }
 
-        _ = Consume(TokenType.Semicolon, "Expect ';' after loop condition.");
+        _ = tokens.Consume(t => t.Type == TokenType.Semicolon, "Expected a ';' after loop condition.");
 
         Expr? increment = null;
-        if (!Check(TokenType.RightParen))
+        if (!tokens.Match(t => t.Type, TokenType.RightParen))
         {
-            increment = Expression();
+            increment = Expression(tokens);
         }
-        _ = Consume(TokenType.RightParen, "Expect ')' after for clauses.");
-        Stmt body = Statement();
 
+        _ = tokens.Consume(t => t.Type == TokenType.RightParen, "Expected ')' at end of for clause.");
+        Stmt body = Statement(tokens);
 
-        // Now just turn our for loop into a while loop lol
+		// Lower for loop into a while loop
 
+		// Append the increment statement to the bottom of the body
         if (increment != null)
         {
             body = new BlockStmt([body, new ExpressionStmt(increment)]);
         }
 
-        condition ??= new LiteralExpr(true);
+		// Wrap the body in a while loop using the providied condition
+        body = new WhileStmt(condition ?? new LiteralExpr(true), body);
 
-        body = new WhileStmt(condition, body);
-
+		// Prepend the initialiser before our new while loop
         if (initializer != null)
         {
             body = new BlockStmt([initializer, body]);
@@ -218,202 +222,211 @@ internal class Parser
         return body;
     }
 
-    private IfStmt IfStatement()
+    private static IfStmt IfStatement(ListHelper<Token> tokens)
     {
-        _ = Consume(TokenType.LeftParen, "Expect '(' after 'if'.");
-        Expr condition = Expression();
+        _ = tokens.Consume(t => t.Type == TokenType.LeftParen, "Expected a '(' after 'if'");
+        Expr condition = Expression(tokens);
 
-        _ = Consume(TokenType.RightParen, "Expect ')' after if condition.");
-        Stmt thenBranch = Statement();
+        _ = tokens.Consume(t => t.Type == TokenType.RightParen, "Expected a ')' after 'if' condition");
+        Stmt thenBranch = Statement(tokens);
 
         Stmt? elseBranch = null;
-        if (Match(TokenType.Else))
+        if (tokens.MatchAndConsume(t => t.Type, TokenType.Else))
         {
-            elseBranch = Statement();
+            elseBranch = Statement(tokens);
         }
 
         return new IfStmt(condition, thenBranch, elseBranch);
     }
 
-    private ReturnStmt ReturnStatement()
+    private static ReturnStmt ReturnStatement(ListHelper<Token> tokens)
     {
-        Token keyword = Previous();
+        Token keyword = tokens.Consume();
         Expr? value = null;
 
-        if (!Check(TokenType.Semicolon))
+        if (!tokens.Match(t => t.Type, TokenType.Semicolon))
         {
-            value = Expression();
+            value = Expression(tokens);
         }
 
-        _ = Consume(TokenType.Semicolon, "Expect ';' after return value.");
+        _ = tokens.Consume(t => t.Type == TokenType.Semicolon, "Expected a ';' after return value.");
         return new ReturnStmt(keyword, value);
     }
 
-    private WhileStmt WhileStatement()
+    private static WhileStmt WhileStatement(ListHelper<Token> tokens)
     {
-        _ = Consume(TokenType.LeftParen, "Expect '(' after 'while'.");
-        Expr condition = Expression();
-        _ = Consume(TokenType.RightParen, "Expect ')' after while condition.");
+        _ = tokens.Consume(t => t.Type == TokenType.LeftParen, "Expected a '(' after 'while'.");
+        Expr condition = Expression(tokens);
 
-        Stmt body = Statement();
+        _ = tokens.Consume(t => t.Type == TokenType.RightParen, "Expected a ')' after while condition.");
+
+        Stmt body = Statement(tokens);
         return new WhileStmt(condition, body);
     }
 
-    private List<Stmt> BlockStatement()
+    private static List<Stmt> BlockStatement(ListHelper<Token> tokens)
     {
-        List<Stmt> statements = [];
+        var statements = new List<Stmt>();
 
-        while (!Check(TokenType.RightBrace) && !IsAtEnd())
+        while (!tokens.Match(t => t.Type, TokenType.RightBrace) && !tokens.IsAtEnd())
         {
-            Stmt? statement = Declaration();
+            Stmt? statement = Declaration(tokens);
             if (statement != null)
             {
                 statements.Add(statement);
             }
         }
 
-        _ = Consume(TokenType.RightBrace, "Expect '}' after block.");
+        _ = tokens.Consume(t => t.Type == TokenType.RightBrace, "Expected '}' after block.");
         return statements;
     }
 
-    private Expr Expression()
+	private static ExpressionStmt ExpressionStatement(ListHelper<Token> tokens)
+	{
+		Expr expr = Expression(tokens);
+		_ = tokens.Consume(t => t.Type == TokenType.Semicolon, "Expected a ';' after expression.");
+		return new ExpressionStmt(expr);
+	}
+
+	private static Expr Expression(ListHelper<Token> tokens)
     {
-        return Assignment();
+        return Assignment(tokens);
     }
 
-    private Expr Assignment()
+    private static Expr Assignment(ListHelper<Token> tokens)
     {
-        Expr expr = Or();
+        Expr target = Or(tokens);
 
-        if (Match(TokenType.Equal))
+        if (tokens.Match(t => t.Type, TokenType.Equal))
         {
-            Token equals = Previous();
-            Expr value = Assignment();
+            Token equals = tokens.Consume();
+            Expr value = Assignment(tokens);
 
-            if (expr is VariableExpr variable)
+            if (target is VariableExpr variable)
             {
                 return new AssignExpr(variable.Name, value);
             }
-            else if (expr is GetExpr get)
+            else if (target is GetExpr get)
             {
                 return new SetExpr(get.Object, get.Name, value);
             }
 
-            throw Error(equals, "Invalid assignment target.");
+			// TODO: Better ex type
+            throw new InvalidOperationException("Invalid assignment target.");
         }
 
-        return expr;
+        return target;
     }
 
-    private Expr Or()
+    private static Expr Or(ListHelper<Token> tokens)
     {
-        Expr expr = And();
+        Expr expr = And(tokens);
 
-        while (Match(TokenType.Or))
+        while (tokens.Match(t => t.Type, TokenType.Or))
         {
-            Token op = Previous();
-            Expr right = And();
+            Token op = tokens.Consume();
+            Expr right = And(tokens);
             expr = new LogicalExpr(expr, op, right);
         }
 
         return expr;
     }
 
-    private Expr And()
+    private static Expr And(ListHelper<Token> tokens)
     {
-        Expr expr = Equality();
+        Expr expr = Equality(tokens);
 
-        while (Match(TokenType.And))
+        while (tokens.Match(t => t.Type, TokenType.And))
         {
-            Token op = Previous();
-            Expr right = Equality();
+            Token op = tokens.Consume();
+            Expr right = Equality(tokens);
             expr = new LogicalExpr(expr, op, right);
         }
 
         return expr;
     }
 
-    private Expr Equality()
+    private static Expr Equality(ListHelper<Token> tokens)
     {
-        Expr expr = Comparison();
+        Expr expr = Comparison(tokens);
 
-        while (Match(TokenType.BangEqual, TokenType.EqualEqual))
+        while (tokens.Match(t => t.Type, TokenType.BangEqual, TokenType.EqualEqual))
         {
-            Token op = Previous();
-            Expr right = Comparison();
+            Token op = tokens.Consume();
+            Expr right = Comparison(tokens);
             expr = new BinaryExpr(expr, op, right);
         }
 
         return expr;
     }
 
-    private Expr Comparison()
+    private static Expr Comparison(ListHelper<Token> tokens)
     {
-        Expr expr = Term();
+        Expr expr = Term(tokens);
 
-        while (Match(TokenType.Greater, TokenType.GreaterEqual, TokenType.Less, TokenType.LessEqual))
+        while (tokens.Match(t => t.Type, TokenType.Greater, TokenType.GreaterEqual, TokenType.Less, TokenType.LessEqual))
         {
-            Token op = Previous();
-            Expr right = Term();
+            Token op = tokens.Consume();
+            Expr right = Term(tokens);
             expr = new BinaryExpr(expr, op, right);
         }
 
         return expr;
     }
 
-    private Expr Term()
+    private static Expr Term(ListHelper<Token> tokens)
     {
-        Expr expr = Factor();
+        Expr expr = Factor(tokens);
 
-        while (Match(TokenType.Minus, TokenType.Plus))
+        while (tokens.Match(t => t.Type, TokenType.Minus, TokenType.Plus))
         {
-            Token op = Previous();
-            Expr right = Factor();
+            Token op = tokens.Consume();
+            Expr right = Factor(tokens);
             expr = new BinaryExpr(expr, op, right);
         }
 
         return expr;
     }
 
-    private Expr Factor()
+    private static Expr Factor(ListHelper<Token> tokens)
     {
-        Expr expr = Unary();
+        Expr expr = Unary(tokens);
 
-        while (Match(TokenType.Slash, TokenType.Star))
+        while (tokens.Match(t => t.Type, TokenType.Slash, TokenType.Star))
         {
-            Token op = Previous();
-            Expr right = Unary();
+            Token op = tokens.Consume();
+            Expr right = Unary(tokens);
             expr = new BinaryExpr(expr, op, right);
         }
 
         return expr;
     }
 
-    private Expr Unary()
+    private static Expr Unary(ListHelper<Token> tokens)
     {
-        if (Match(TokenType.Bang, TokenType.Minus))
+        if (tokens.Match(t => t.Type, TokenType.Bang, TokenType.Minus))
         {
-            Token op = Previous();
-            Expr right = Unary();
+            Token op = tokens.Consume();
+            Expr right = Unary(tokens);
             return new UnaryExpr(op, right);
         }
 
-        return Call();
+        return Call(tokens);
     }
 
-    private Expr Call()
+    private static Expr Call(ListHelper<Token> tokens)
     {
-        Expr expr = Index();
+        Expr expr = Index(tokens);
 
         while (true)
         {
-            if (Match(TokenType.LeftParen))
+            if (tokens.MatchAndConsume(t => t.Type, TokenType.LeftParen))
             {
-                expr = FinishCall(expr);
+                expr = FinishCall(tokens, expr);
             }
-            if (Match(TokenType.Dot))
+            if (tokens.Match(t => t.Type, TokenType.Dot))
             {
-                Token name = Consume(TokenType.Identifier, "Expect property name after '.'");
+                Token name = tokens.Consume(t => t.Type == TokenType.Identifier, "Expect property name after '.'");
                 expr = new GetExpr(expr, name);
             }
             else
@@ -425,37 +438,37 @@ internal class Parser
         return expr;
     }
 
-    private CallExpr FinishCall(Expr callee)
+    private static CallExpr FinishCall(ListHelper<Token> tokens, Expr callee)
     {
         List<Expr> arguments = [];
 
-        if (!Check(TokenType.RightParen))
+        if (!tokens.Match(t => t.Type, TokenType.RightParen))
         {
             do
             {
-                if (arguments.Count >= 255)
+                if (arguments.Count >= FUNCTION_PARAMETER_LIMIT)
                 {
-                    Morph.Error(Peek(), "Cannot have more than 255 arguments.");
+                    MorphRunner.Error(tokens.Peek(), $"Cannot have more than {FUNCTION_PARAMETER_LIMIT} arguments.");
                 }
 
-                arguments.Add(Expression());
+                arguments.Add(Expression(tokens));
             }
-            while (Match(TokenType.Comma));
+            while (tokens.MatchAndConsume(t => t.Type == TokenType.Comma));
         }
 
-        Token paren = Consume(TokenType.RightParen, "Expect ')' after arguments.");
+        Token paren = tokens.Consume(t => t.Type == TokenType.RightParen, "Expected ')' after arguments.");
         return new CallExpr(callee, paren, arguments);
     }
 
-    private Expr Index()
+    private static Expr Index(ListHelper<Token> tokens)
     {
-        Expr expr = Primary();
+        Expr expr = Primary(tokens);
 
         while (true)
         {
-            if (Match(TokenType.LeftSquareBracket))
+            if (tokens.MatchAndConsume(t => t.Type == TokenType.LeftSquareBracket))
             {
-                expr = FinishIndex(expr);
+                expr = FinishIndex(tokens, expr);
             }
             else
             {
@@ -466,156 +479,105 @@ internal class Parser
         return expr;
     }
 
-    private IndexExpr FinishIndex(Expr callee)
+    private static IndexExpr FinishIndex(ListHelper<Token> tokens, Expr callee)
     {
-        Expr index = Expression();
-        Token bracket = Consume(TokenType.RightSquareBracket, "Expect ']' after index expression.");
+        Expr index = Expression(tokens);
+        Token bracket = tokens.Consume(t => t.Type == TokenType.RightSquareBracket, "Expected ']' after index expression.");
         return new IndexExpr(callee, bracket, index);
     }
 
-    private Expr Primary()
+    private static Expr Primary(ListHelper<Token> tokens)
     {
-        if (Match(TokenType.False))
+        if (tokens.MatchAndConsume(t => t.Type == TokenType.False))
         {
             return new LiteralExpr(false);
         }
 
-        if (Match(TokenType.True))
+		if (tokens.MatchAndConsume(t => t.Type == TokenType.True))
         {
             return new LiteralExpr(true);
         }
 
-        if (Match(TokenType.Nil))
+		if (tokens.MatchAndConsume(t => t.Type == TokenType.Nil))
         {
             return new LiteralExpr(null);
         }
 
-        if (Match(TokenType.Number, TokenType.String))
+		if (tokens.Match(t => t.Type, TokenType.Number, TokenType.String))
         {
-            return new LiteralExpr(Previous().Literal);
+            return new LiteralExpr(tokens.Consume().Literal);
         }
 
-        if (Match(TokenType.This))
+		if (tokens.Match(t => t.Type, TokenType.This))
         {
-            return new ThisExpr(Previous());
+            return new ThisExpr(tokens.Consume());
         }
 
-        if (Match(TokenType.InterpolatedStringStart))
+		if (tokens.MatchAndConsume(t => t.Type == TokenType.InterpolatedStringStart))
         {
-            return InterpolatedString();
+            return InterpolatedString(tokens);
         }
 
-        if (Match(TokenType.Identifier))
+		if (tokens.Match(t => t.Type, TokenType.Identifier))
         {
-            return new VariableExpr(Previous());
+            return new VariableExpr(tokens.Consume());
         }
 
-        if (Match(TokenType.LeftParen))
+		if (tokens.MatchAndConsume(t => t.Type == TokenType.LeftParen))
         {
-            Expr expr = Expression();
-            _ = Consume(TokenType.RightParen, "Expect ')' after expression.");
+            Expr expr = Expression(tokens);
+            _ = tokens.Consume(t => t.Type == TokenType.RightParen, "Expected ')' after expression.");
             return new GroupingExpr(expr);
         }
 
-        throw Error(Peek(), $"Expect expression, but got: {Peek().Type}");
+		// TODO: Better ex type
+        throw new InvalidOperationException($"Expected an expression, but got: {tokens.Current.Type}");
     }
 
-    private InterpolatedStringExpr InterpolatedString()
+    private static InterpolatedStringExpr InterpolatedString(ListHelper<Token> tokens)
     {
         var parts = new List<Expr>();
 
-        while (!Check(TokenType.InterpolatedStringEnd) && !IsAtEnd())
+        while (!tokens.MatchAndConsume(t => t.Type, TokenType.InterpolatedStringEnd))
         {
-            if (Match(TokenType.String))
+            if (tokens.Match(t => t.Type, TokenType.String))
             {
                 // String literal part
-                parts.Add(new LiteralExpr(Previous().Literal));
+                parts.Add(new LiteralExpr(tokens.Consume().Literal));
             }
-            else if (Match(TokenType.InterpolatedStringExpressionStart))
+            else if (tokens.MatchAndConsume(t => t.Type, TokenType.InterpolatedStringExpressionStart))
             {
                 // Expression part inside [ ]
-                Expr expr = Expression();
-                _ = Consume(TokenType.InterpolatedStringExpressionEnd, "Expect ']' after interpolated expression.");
+                Expr expr = Expression(tokens);
+                _ = tokens.Consume(t => t.Type == TokenType.InterpolatedStringExpressionEnd, "Expected ']' after expression in interpolated string.");
                 parts.Add(expr);
             }
             else
             {
-                Morph.Error(_current, "Unexpected token in interpolated string");
+                MorphRunner.Error(tokens.Current, "Unexpected token in interpolated string");
             }
         }
 
         // Consume InterpolatedStringEnd
-        _ = Consume(TokenType.InterpolatedStringEnd, "Expect end of interpolated string.");
+        _ = tokens.Consume(t => t.Type == TokenType.InterpolatedStringEnd, "Interpolated string was not closed");
 
         return new InterpolatedStringExpr(parts);
     }
 
-    private Token Advance()
+	/// <summary>
+	/// Attempt to find the next statement boundary to continue parsing from.
+	/// </summary>
+	private static void Synchronize(ListHelper<Token> tokens)
     {
-        if (!IsAtEnd())
+        while (tokens.MoveNext())
         {
-            _current++;
-        }
-
-        return Previous();
-    }
-
-    private bool Match(params TokenType[] types)
-    {
-        foreach (TokenType type in types)
-        {
-            if (Check(type))
+            if (tokens.Current.Type == TokenType.Semicolon)
             {
-                _ = Advance();
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private bool Check(TokenType type)
-    {
-        return !IsAtEnd() && Peek().Type == type;
-    }
-
-    private Token Consume(TokenType type, string message)
-    {
-        return Check(type) ? Advance() : throw Error(Peek(), message);
-    }
-
-    private bool IsAtEnd()
-    {
-        return Peek().Type == TokenType.Eof;
-    }
-
-    private Token Peek()
-    {
-        return _tokens[_current];
-    }
-
-    private Token Previous()
-    {
-        return _tokens[_current - 1];
-    }
-
-    private ParseException Error(Token token, string message)
-    {
-        Morph.Error(token, message);
-        return new ParseException(token.Line, $"Error at line {token.Line}: {message}");
-    }
-
-    private void Synchronize()
-    {
-        _ = Advance();
-
-        while (!IsAtEnd())
-        {
-            if (Previous().Type == TokenType.Semicolon)
-            {
+				tokens.MoveNext();
                 return;
             }
 
-            switch (Peek().Type)
+            switch (tokens.Current.Type)
             {
                 case TokenType.Fun:
                 case TokenType.Var:
@@ -625,8 +587,6 @@ internal class Parser
                 case TokenType.Return:
                     return;
             }
-
-            _ = Advance();
         }
     }
 }

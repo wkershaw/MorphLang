@@ -7,7 +7,7 @@ internal class WriteCallable : IMorphCallable
     public object? Call(Interpreter interpreter, List<object?> arguments)
     {
         string value = interpreter.Stringify(arguments[0]);
-        Morph.Output("write", value);
+        MorphRunner.Output("write", value);
         return null;
     }
 }

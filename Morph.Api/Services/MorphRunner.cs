@@ -44,11 +44,11 @@ public class MorphRunner
         };
 
         // Subscribe to the message events
-        Morph.Morph.Out += MessageHandler;
+        Morph.MorphRunner.Out += MessageHandler;
 
         try
         {
-            var result = Morph.Morph.RunCode(morphProgram, inputs);
+            var result = Morph.MorphRunner.RunCode(morphProgram, inputs);
         }
         catch(Exception ex)
         {
@@ -56,7 +56,7 @@ public class MorphRunner
         }
         finally
         {
-            Morph.Morph.Out -= MessageHandler;
+            Morph.MorphRunner.Out -= MessageHandler;
         }
 
         var successResult = new SuccessResult()

@@ -18,7 +18,7 @@ internal class SetHeaderCallable : IMorphCallable
             throw new RuntimeException(null, "Header value contains invalid characters.");
         }
 
-        Morph.Output("header", $"{key}:{value}");
+        MorphRunner.Output("header", $"{key}:{value}");
         return null;
     }
 }

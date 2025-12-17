@@ -11,7 +11,7 @@ internal class SetResponseCodeCallable : IMorphCallable
             throw new RuntimeException(null, "Status code must be an integer.");
         }
 
-        Morph.Output("response", statusCode.ToString());
+        MorphRunner.Output("response", statusCode.ToString());
         return null;
     }
 }

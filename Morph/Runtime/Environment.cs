@@ -4,18 +4,14 @@ namespace Morph.Runtime;
 
 internal class Environment
 {
-    private readonly Environment? _enclosing;
-    private readonly Dictionary<string, object?> _values = new();
+    private readonly Environment? _parent;
+    private readonly Dictionary<string, object?> _values;
 
-    public Environment()
+    public Environment(Environment? parent = null)
     {
-        _enclosing = null;
-    }
-
-    public Environment(Environment enclosing)
-    {
-        _enclosing = enclosing;
-    }
+        _parent = parent;
+		_values = new Dictionary<string, object?>();
+	}
 
     public void Define(string name, object? value)
     {
@@ -24,20 +20,30 @@ internal class Environment
 
     public object? Get(Token name)
     {
-        if (_values.TryGetValue(name.Lexeme, out var value))
-        {
-            return value;
-        }
-
-        if (_enclosing != null)
-        {
-            return _enclosing.Get(name);
-        }
-
-        throw new RuntimeException(name, $"Undefined variable '{name.Lexeme}'.");
+		return Get(name.Lexeme);
     }
 
-    public object? GetAt(int distance, string name)
+	public object? Get(string name)
+	{
+		if (_values.TryGetValue(name, out var value))
+		{
+			return value;
+		}
+
+		if (_parent != null)
+		{
+			return _parent.Get(name);
+		}
+
+		throw new RuntimeException(null, $"Undefined variable '{name}'.");
+	}
+
+	public void AssignAt(int distance, Token name, object? value)
+	{
+		Ancestor(distance)._values[name.Lexeme] = value;
+	}
+
+	public object? GetAt(int distance, string name)
     {
         return Ancestor(distance)._values[name];
     }
@@ -47,7 +53,7 @@ internal class Environment
         Environment env = this;
         for (int i = 0; i < distance; i++)
         {
-            env = env._enclosing!;
+            env = env._parent!;
         }
 
         return env;
@@ -61,17 +67,12 @@ internal class Environment
             return;
         }
 
-        if (_enclosing != null)
+        if (_parent != null)
         {
-            _enclosing.Assign(name, value);
+            _parent.Assign(name, value);
             return;
         }
 
         throw new RuntimeException(name, $"Undefined variable '{name.Lexeme}'.");
-    }
-
-    public void AssignAt(int distance, Token name, object? value)
-    {
-        Ancestor(distance)._values[name.Lexeme] = value;
     }
 }

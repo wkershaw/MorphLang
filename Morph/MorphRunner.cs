@@ -2,12 +2,13 @@ using Morph.Parsing;
 using Morph.Parsing.Statements;
 using Morph.Runtime;
 using Morph.Scanning;
+using System.Diagnostics;
 
 namespace Morph;
 
 public record Message(string channel, string content);
 
-public static class Morph
+public static class MorphRunner
 {
     public static event EventHandler<Message>? Out;
 
@@ -31,11 +32,11 @@ public static class Morph
     {
         List<Token> tokens = Scanner.ScanTokens(source);
 
-        var parser = new Parser(tokens);
-        List<Stmt> statements = parser.Parse();
+		List<Stmt> statements = Parser.Parse(tokens);
 
-        if (hadError)
+		if (hadError)
         {
+			Output("Debug", "Had error, so will not continue");
             return;
         }
 

@@ -6,10 +6,12 @@ namespace Morph.Scanning;
 /// </summary>
 internal class Token
 {
+	public static readonly Token Empty = new Token(TokenType.Eof, "", null, -1);
+
 	/// <summary>
 	/// The type of the token
 	/// </summary>
-    public TokenType Type { get; private set; }
+	public TokenType Type { get; private set; }
 
 	/// <summary>
 	/// The sequence of characters in the source code that this token is derived from

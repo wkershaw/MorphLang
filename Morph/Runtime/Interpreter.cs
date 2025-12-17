@@ -60,7 +60,7 @@ internal class Interpreter : IExprVisitor<object?>, IStmtVisitor<object?>
         }
         catch (RuntimeException e)
         {
-            Morph.RuntimeError(e);
+            MorphRunner.RuntimeError(e);
         }
     }
 

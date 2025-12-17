@@ -7,7 +7,7 @@ internal class DebugCallable : IMorphCallable
     public object? Call(Interpreter interpreter, List<object?> arguments)
     {
         string value = interpreter.Stringify(arguments[0]);
-        Morph.Output("debug", value);
+        MorphRunner.Output("debug", value);
         return null;
     }
 }

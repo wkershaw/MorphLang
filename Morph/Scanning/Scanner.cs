@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
 namespace Morph.Scanning;
@@ -12,10 +13,9 @@ internal static class Scanner
     /// Represents the result of scanning a sequence for tokens, including the number of characters scanned, the number of
     /// new lines encountered, and the tokens identified.
     /// </summary>
-    /// <param name="ScanLength">The total number of characters in the source that were scanned to produce the tokens.</param>
     /// <param name="NewLines">The number of new line characters encountered during the scan.</param>
     /// <param name="Tokens">A collection of tokens identified during the scan. May contain zero or more tokens.</param>
-    private record ScanTokenResult(int ScanLength, int NewLines, params IEnumerable<Token> Tokens);
+    private record ScanTokenResult(int NewLines, params IEnumerable<Token> Tokens);
 
     /// <summary>
     /// Scans the specified source text and returns a list of tokens representing the lexical elements found.
@@ -31,19 +31,16 @@ internal static class Scanner
 
         List<Token> tokens = [];
 
-        int nextTokenStart = 0;
         int currentLine = 1;
+		var helper = new ListHelper<char>(source.ToCharArray(), '\0');
 
-        while (nextTokenStart < source.Length)
-        {
-            ScanTokenResult scanResult = ScanNextTokens(source, nextTokenStart, currentLine);
+		while (!helper.IsAtEnd())
+		{
+			ScanTokenResult scanResult = ScanNextTokens(helper, currentLine);
+			currentLine += scanResult.NewLines;
+			tokens.AddRange(scanResult.Tokens);
+		}
 
-            nextTokenStart += scanResult.ScanLength;
-            currentLine += scanResult.NewLines;
-            tokens.AddRange(scanResult.Tokens);
-        }
-
-        tokens.Add(new Token(TokenType.Eof, "", null, currentLine));
         return tokens;
     }
 
@@ -51,113 +48,130 @@ internal static class Scanner
     /// Scans the next token or sequence of tokens from the source code, starting at the specified position and line
     /// number.
     /// </summary>
-    private static ScanTokenResult ScanNextTokens(string source, int current, int currentLine)
+    private static ScanTokenResult ScanNextTokens(ListHelper<char> source, int currentLine)
     {
-        int start = current;
-        Token token;
-
-        char c = source[current];
+		Token token;
+		
+		source.MoveNext();
+        char c = source.Current;
+        int start = source.CurrentIndex;
 
         // Single character tokens
         if (Lexemes.SingleCharacterTokens.TryGetValue(c, out TokenType singleCharToken))
         {
             token = new Token(singleCharToken, c.ToString(), null, currentLine);
-            return new ScanTokenResult(1, 0, token);
+            return new ScanTokenResult(0, token);
         }
 
         // Single or double character tokens
-        if (Lexemes.DoubleCharacterTokenStarts.TryGetValue(c, out TokenType tokenType))
-        {
-            // Could still be a double character token, so check the next char
-            var nextChar = Peek(source, current);
-            var possibleDoubleCharToken = $"{c}{nextChar}";
-
-            if (Lexemes.DoubleCharacterTokens.TryGetValue(possibleDoubleCharToken, out TokenType doubleCharToken))
-            {
-                token = new Token(doubleCharToken, possibleDoubleCharToken, null, currentLine);
-                return new ScanTokenResult(2, 0, token);
-            }
-
-            token = new Token(tokenType, c.ToString(), null, currentLine);
-            return new ScanTokenResult(1, 0, token);
-        }
+		if (CheckDoubleCharacterToken(source, currentLine, out ScanTokenResult? doubleCharTokenResult))
+		{
+			return doubleCharTokenResult;
+		}
 
         if (c == '/')
         {
-            if (Peek(source, current) != '/')
+            if (source.Peek() != '/')
             {
-                token = new Token(TokenType.Slash, "/", null, currentLine);
-                return new ScanTokenResult(1, 0, token);
+                return new ScanTokenResult(0, new Token(TokenType.Slash, "/", null, currentLine));
             }
 
             // Comment. So scan to the end of the line or file
-            while (!IsAtEnd(source, current) && source[current] != '\n')
+            while (!source.IsAtEnd() && source.Current != '\n')
             {
-                current++;
+                source.MoveNext();
             }
 
-            return new ScanTokenResult(current - start, 0);
+            return new ScanTokenResult(0);
         }
 
         if (c == '"')
         {
-            return ScanString(source, current, currentLine);
+            return ScanString(source, currentLine);
         }
 
         if (c == '$')
         {
-            if (Peek(source, current) == '"')
+            if (source.Peek() == '"')
             {
-                return ScanInterpolatedString(source, current, currentLine);
+                return ScanInterpolatedString(source, currentLine);
             }
 
-            Morph.Error(currentLine, "Unexpected character after '$'");
-            return new ScanTokenResult(1, 0);
+            MorphRunner.Error(currentLine, "Unexpected character after '$'");
+            return new ScanTokenResult(0);
         }
 
         if (c == '\n')
         {
-            return new ScanTokenResult(1, 1);
+            return new ScanTokenResult(1);
         }
 
         if (char.IsWhiteSpace(c))
         {
-            return new ScanTokenResult(1, 0);
+            return new ScanTokenResult(0);
         }
 
         if (char.IsDigit(c))
         {
-            return ScanNumber(source, current, currentLine);
+            return ScanNumber(source, currentLine);
         }
 
         if (char.IsLetter(c))
         {
-            return ScanIdentifier(source, current, currentLine);
+            return ScanIdentifier(source, currentLine);
         }
+
+		if (c == '\0')
+		{
+			return new ScanTokenResult(0, new Token(TokenType.Eof, "", null, currentLine));
+		}
 
         // Reached an unexpected character, but fail gracefully and attempt
         // to scan the rest of the source to spot any more errors
-        Morph.Error(currentLine, $"Unexpected character: {c}");
-        return new ScanTokenResult(1, 0);
+        MorphRunner.Error(currentLine, $"Unexpected character: {c}");
+        return new ScanTokenResult(0);
     }
 
-    private static ScanTokenResult ScanString(string source, int current, int currentLine)
-    {
-        Debug.Assert(source[current] == '"');
+	private static bool CheckDoubleCharacterToken(ListHelper<char> source, int line, [MaybeNullWhen(false)]out ScanTokenResult result)
+	{
+		char c = source.Current;
 
-        current++;
-        int startOfString = current;
+		if (!Lexemes.DoubleCharacterTokenStarts.TryGetValue(c, out TokenType tokenType))
+		{
+			result = null;
+			return false;
+		}
+		
+		// Could still be a double character token, so check the next char
+		var nextChar = source.Peek();
+		var possibleDoubleCharToken = $"{c}{nextChar}";
+
+		if (Lexemes.DoubleCharacterTokens.TryGetValue(possibleDoubleCharToken, out TokenType doubleCharToken))
+		{
+			source.MoveNext(); // Consume the second character
+			result = new ScanTokenResult(0, new Token(doubleCharToken, possibleDoubleCharToken, null, line));
+			return true;
+		}
+
+		// Nope, just a single character token
+		result = new ScanTokenResult(0, new Token(tokenType, c.ToString(), null, line));
+
+		return true;
+	}
+
+	private static ScanTokenResult ScanString(ListHelper<char> source, int currentLine)
+    {
+        Debug.Assert(source.Current == '"');
 
         StringBuilder sb = new();
         bool escaped = false;
         int newLines = 0;
 
-        while (!IsAtEnd(source, current))
+        while (source.MoveNext())
         {
-            char c = source[current];
-            current++;
+            char c = source.Current;
 
-            if (escaped)
+			if (escaped)
             {
                 escaped = false;
 
@@ -173,11 +187,11 @@ internal static class Scanner
 
                 if (escapedCharacter == '_')
                 {
-                    Morph.Error(currentLine, $"Unable to escape character '{c}'");
+                    MorphRunner.Error(currentLine, $"Unable to escape character '{c}'");
                     continue;
                 }
 
-                _ = sb.Append(escapedCharacter);
+                sb.Append(escapedCharacter);
                 continue;
             }
 
@@ -195,40 +209,34 @@ internal static class Scanner
 
             if (c == '"')
             {
-                Token token = new(TokenType.String, sb.ToString(), null, currentLine);
-                return new ScanTokenResult(current - startOfString + 1, newLines, token);
+                Token token = new Token(TokenType.String, sb.ToString(), sb.ToString(), currentLine);
+                return new ScanTokenResult(newLines, token);
             }
 
-            _ = sb.Append(c);
+            sb.Append(c);
         }
 
-        Morph.Error(currentLine, "Unterminated string.");
-        return new ScanTokenResult(sb.Length + 1, newLines);
+        MorphRunner.Error(currentLine, "Unterminated string.");
+        return new ScanTokenResult(newLines);
     }
 
-    private static ScanTokenResult ScanInterpolatedString(string source, int current, int currentLine)
+    private static ScanTokenResult ScanInterpolatedString(ListHelper<char> source, int currentLine)
     {
-        Token token;
+        Debug.Assert(source.Current == '$');
+		source.MoveNext();
+        Debug.Assert(source.Current == '"');
+
         List<Token> tokens = [];
         StringBuilder sb = new();
         bool escaped = false;
         int newLines = 0;
 
-        Debug.Assert(source[current] == '$');
-        current++;
-
-        Debug.Assert(source[current] == '"');
-        current++;
-
-        int startOfString = current;
-
         Token startToken = new(TokenType.InterpolatedStringStart, "$\"", null, currentLine);
         tokens.Add(startToken);
 
-        while (!IsAtEnd(source, current))
+		while (source.MoveNext())
         {
-            char c = source[current];
-            current++;
+            char c = source.Current;
 
             if (escaped)
             {
@@ -247,7 +255,7 @@ internal static class Scanner
 
                 if (escapedCharacter == '_')
                 {
-                    Morph.Error(currentLine, $"Unable to escape character '{c}'");
+                    MorphRunner.Error(currentLine, $"Unable to escape character '{c}'");
                     continue;
                 }
 
@@ -272,32 +280,29 @@ internal static class Scanner
                 // Emit any string part before the expression
                 if (sb.Length > 0)
                 {
-                    token = new Token(TokenType.String, sb.ToString(), null, currentLine);
-                    tokens.Add(token);
-                    _ = sb.Clear();
+                    tokens.Add(new Token(TokenType.String, sb.ToString(), sb.ToString(), currentLine));
+                    sb.Clear();
                 }
 
-                token = new Token(TokenType.InterpolatedStringExpressionStart, sb.ToString(), null, currentLine);
-                tokens.Add(token);
+                tokens.Add(new Token(TokenType.InterpolatedStringExpressionStart, sb.ToString(), null, currentLine));
 
-                while (!IsAtEnd(source, current) && source[current] != ']')
+                while (!source.IsAtEnd() && source.Peek() != ']')
                 {
-                    ScanTokenResult expressionTokenResult = ScanNextTokens(source, current, currentLine);
-                    current += expressionTokenResult.ScanLength;
+                    ScanTokenResult expressionTokenResult = ScanNextTokens(source, currentLine);
                     currentLine += expressionTokenResult.NewLines;
                     tokens.AddRange(expressionTokenResult.Tokens);
                 }
 
-                if (IsAtEnd(source, current))
+                if (source.IsAtEnd())
                 {
-                    Morph.Error(currentLine, "Unterminated interpolation in string.");
+                    MorphRunner.Error(currentLine, "Unterminated interpolation in string.");
                     break;
                 }
 
-                token = new Token(TokenType.InterpolatedStringExpressionEnd, sb.ToString(), null, currentLine);
-                tokens.Add(token);
+                tokens.Add(new Token(TokenType.InterpolatedStringExpressionEnd, sb.ToString(), null, currentLine));
 
-                current++;
+				// Consume the closing ']'
+				source.MoveNext();
 
                 continue;
             }
@@ -306,97 +311,78 @@ internal static class Scanner
             {
                 if (sb.Length > 0)
                 {
-                    token = new Token(TokenType.String, sb.ToString(), null, currentLine);
-                    tokens.Add(token);
+                    tokens.Add(new Token(TokenType.String, sb.ToString(), sb.ToString(), currentLine));
                 }
 
-                token = new Token(TokenType.InterpolatedStringEnd, "\"", null, currentLine);
-                tokens.Add(token);
+                tokens.Add(new Token(TokenType.InterpolatedStringEnd, "\"", null, currentLine));
 
-                return new ScanTokenResult(current - startOfString + 2, newLines, tokens);
+                return new ScanTokenResult(newLines, tokens);
             }
 
-            _ = sb.Append(c);
+            sb.Append(c);
         }
 
-        Morph.Error(currentLine, "Unterminated string.");
-        return new ScanTokenResult(current - startOfString, newLines);
+        MorphRunner.Error(currentLine, "Unterminated string.");
+        return new ScanTokenResult(newLines, tokens);
     }
 
-    private static ScanTokenResult ScanNumber(string source, int current, int currentLine)
+    private static ScanTokenResult ScanNumber(ListHelper<char> source, int currentLine)
     {
-        Debug.Assert(char.IsDigit(source[current]));
+        Debug.Assert(char.IsDigit(source.Current));
 
-        int startIndex = current;
+		source.StartRange();
 
-        while (!IsAtEnd(source, current) && char.IsDigit(source[current]))
+        while (!source.IsAtEnd() && char.IsDigit(source.Peek()))
         {
-            current++;
+            source.MoveNext();
         }
 
         // Fractional numbers are followed by a '.' then another number
-        if (IsAtEnd(source, current)
-            || source[current] != '.'
-            || IsAtEnd(source, current + 1)
-            || !char.IsDigit(source[current + 1]))
+        if (source.Peek() != '.' || !char.IsDigit(source.PeekNext()))
         {
-            Token nonFractionalToken = new(
-                TokenType.Number,
-                source[startIndex..current],
-                decimal.Parse(source[startIndex..current]),
-                currentLine);
+			// Not a fractional number, so just parse the integer part
+			var integerLexeme = new string(source.GetRange());
+			var integerValue = decimal.Parse(integerLexeme);
 
-            return new ScanTokenResult(current - startIndex, 0, nonFractionalToken);
+			Token integertoken = new(TokenType.Number, integerLexeme, integerValue, currentLine);
+            return new ScanTokenResult(0, integertoken);
         }
 
-        current++; // Move past the '.'
+		// Move over to the first digit of the decimal part
+        source.MoveNext();
+		source.MoveNext();
 
-        while (!IsAtEnd(source, current) && char.IsDigit(source[current]))
+		while (!source.IsAtEnd() && char.IsDigit(source.Peek()))
         {
-            current++;
+            source.MoveNext();
         }
 
-        Token fractionalToken = new(
-            TokenType.Number,
-            source[startIndex..current],
-            decimal.Parse(source[startIndex..current]),
-            currentLine);
+		var fractionalLexeme = new string(source.GetRange());
+		var fractionalValue = decimal.Parse(fractionalLexeme);
 
-        return new ScanTokenResult(current - startIndex, 0, fractionalToken);
+		Token nonFractionalToken = new(TokenType.Number, fractionalLexeme, fractionalValue, currentLine);
+		return new ScanTokenResult(0, nonFractionalToken);
     }
 
-    private static ScanTokenResult ScanIdentifier(string source, int current, int currentLine)
+    private static ScanTokenResult ScanIdentifier(ListHelper<char> source, int currentLine)
     {
-        Debug.Assert(char.IsLetter(source[current]));
+        Debug.Assert(char.IsLetter(source.Current));
 
-        Token token;
-        int startIndex = current;
+		source.StartRange();
 
-        while (!IsAtEnd(source, current) && IsIdentifierChar(source[current]))
+        while (!source.IsAtEnd() && IsIdentifierChar(source.Peek()))
         {
-            current++;
+            source.MoveNext();
         }
 
-        string text = source[startIndex..current];
+		string text = new string(source.GetRange());
 
         if (Lexemes.Keywords.TryGetValue(text, out TokenType type))
         {
-            token = new Token(type, text, null, currentLine);
-            return new ScanTokenResult(text.Length, 0, token);
+            return new ScanTokenResult(0, new Token(type, text, null, currentLine));
         }
 
-        token = new Token(TokenType.Identifier, text, null, currentLine);
-        return new ScanTokenResult(text.Length, 0, token);
-    }
-
-    private static char Peek(string source, int current)
-    {
-        return IsAtEnd(source, current) ? '\0' : source[current + 1];
-    }
-
-    private static bool IsAtEnd(string source, int current)
-    {
-        return current >= source.Length;
+        return new ScanTokenResult(0, new Token(TokenType.Identifier, text, null, currentLine));
     }
 
     private static bool IsIdentifierChar(char c)

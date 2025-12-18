@@ -8,6 +8,7 @@ internal class MorphFunction : IMorphFunction
 {
     private readonly FunctionDefinitionStmt _declaration;
     private readonly Environment _closure;
+	private readonly bool _isConstructor;
 
     public int Arity => _declaration.Params.Count;
 
@@ -15,6 +16,7 @@ internal class MorphFunction : IMorphFunction
     {
         _declaration = declaration;
         _closure = closure;
+		_isConstructor = declaration.Name.Lexeme == "init";
     }
 
     public object? Call(Interpreter interpreter, List<object?> arguments)
@@ -32,10 +34,10 @@ internal class MorphFunction : IMorphFunction
         }
         catch (Return r)
         {
-            return r.Value;
+            return _isConstructor ? _closure.GetAt(0, "this") : r.Value;
         }
 
-        return null;
+		return _isConstructor ? _closure.GetAt(0, "this") : null;
     }
 
     public override string ToString()

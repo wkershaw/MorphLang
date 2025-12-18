@@ -17,7 +17,7 @@ internal class MorphClass
         _constructors = new Dictionary<int, IMorphConstructor>();
     }
 
-    public MorphInstance Construct(Interpreter interpreter, List<object?> arguments)
+    public object? Construct(Interpreter interpreter, List<object?> arguments)
     {
         if (!_constructors.TryGetValue(arguments.Count, out IMorphConstructor? constructor))
 		{
@@ -32,7 +32,7 @@ internal class MorphClass
 		}
 
 		var instance = new MorphInstance(this);
-		return constructor.Call(interpreter, instance, arguments);
+		return constructor.Bind(instance).Call(interpreter, arguments);
     }
 
     public MethodSet? FindMethodSet(string name)

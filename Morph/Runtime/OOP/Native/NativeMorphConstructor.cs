@@ -1,4 +1,6 @@
-﻿using Morph.Runtime.OOP.Interfaces;
+﻿using Morph.Runtime.Functions;
+using Morph.Runtime.Functions.Interfaces;
+using Morph.Runtime.OOP.Interfaces;
 
 namespace Morph.Runtime.OOP.Native
 {
@@ -14,12 +16,12 @@ namespace Morph.Runtime.OOP.Native
             _body = body;
         }
 
-        public MorphInstance Call(Interpreter interpreter, MorphInstance instance, List<object?> arguments)
-        {
-            return _body(interpreter, instance, arguments);
+		public IMorphFunction Bind(MorphInstance instance)
+		{
+			return new NativeMorphFunction(Arity, (i, a) => _body(i, instance, a));
 		}
 
-        public override string ToString()
+		public override string ToString()
         {
             return "<nativeConstructor>";
         }

@@ -5,14 +5,21 @@ var inputs = new Dictionary<string, string>
 };
 
 var code = """
-	Output.WriteLine(Clock.ToFormattedString("dd-mm-yy"));
-	Output.WriteLine(Random.Between(4,40));
+	class MyClass
+	{
+		init()
+		{
+			this.x = "hello world";
+		}
 
-	var url = Url("http://www.google.com?a=b");
-	Output.WriteLine(url["a"]);
+		say()
+		{
+			Output.WriteLine(this.x);
+		}
+	}
 
-	var json = Json("{ \"test\": \"value\" }");
-	Output.WriteLine(json["test"]);
+	var i = MyClass();
+	i.say();
 
 	""";
 

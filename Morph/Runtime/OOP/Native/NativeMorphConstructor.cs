@@ -1,16 +1,17 @@
-﻿using Morph.Runtime.Functions;
-using Morph.Runtime.Functions.Interfaces;
+﻿using Morph.Runtime.Functions.Interfaces;
 using Morph.Runtime.OOP.Interfaces;
 
 namespace Morph.Runtime.OOP.Native
 {
-    internal class NativeMorphConstructor : IMorphConstructor
+	internal delegate MorphInstance NativeMorphConstructorBody(Interpreter interpreter, MorphInstance instance, List<object?> arguments);
+
+	internal class NativeMorphConstructor : IMorphConstructor
     {
-		private readonly Func<Interpreter, MorphInstance, List<object?>, MorphInstance> _body;
+		private readonly NativeMorphConstructorBody _body;
 
         public int Arity { get; private init; }
 
-		public NativeMorphConstructor(int arity, Func<Interpreter, MorphInstance, List<object?>, MorphInstance> body)
+		public NativeMorphConstructor(int arity, NativeMorphConstructorBody body)
         {
 			Arity = arity;
             _body = body;

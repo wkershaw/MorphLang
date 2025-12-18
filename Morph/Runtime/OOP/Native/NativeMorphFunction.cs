@@ -2,13 +2,16 @@
 
 namespace Morph.Runtime.OOP.Native
 {
-    internal class NativeMorphFunction : IMorphFunction
+	internal delegate object? NativeMorphFunctionBody(Interpreter interpreter, List<object?> arguments);
+
+
+	internal class NativeMorphFunction : IMorphFunction
     {
-		private readonly Func<Interpreter, List<object?>, object?> _body;
+		private readonly NativeMorphFunctionBody _body;
 
 		public int Arity { get; private init; }
 
-		public NativeMorphFunction(int arity, Func<Interpreter, List<object?>, object?> body)
+		public NativeMorphFunction(int arity, NativeMorphFunctionBody body)
 		{
 			_body = body;
 			Arity = arity;

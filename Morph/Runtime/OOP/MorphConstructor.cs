@@ -2,7 +2,6 @@
 using Morph.Runtime.Functions;
 using Morph.Runtime.Functions.Interfaces;
 using Morph.Runtime.OOP.Interfaces;
-using Morph.Scanning;
 namespace Morph.Runtime.OOP
 {
     internal class MorphConstructor : IMorphConstructor

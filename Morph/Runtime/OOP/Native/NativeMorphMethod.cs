@@ -3,13 +3,13 @@ using Morph.Runtime.OOP.Interfaces;
 
 namespace Morph.Runtime.OOP.Native
 {
-    internal class NativeMorphMethod : IMorphMethod
+	internal class NativeMorphMethod : IMorphMethod
     {
-        private readonly Func<Interpreter, List<object?>, object?> _body;
+        private readonly NativeMorphFunctionBody _body;
 
 		public int Arity { get; private init; }
 
-		public NativeMorphMethod(int arity, Func<Interpreter, List<object?>, object?> body)
+		public NativeMorphMethod(int arity, NativeMorphFunctionBody body)
 		{
 			Arity = arity;
             _body = body;

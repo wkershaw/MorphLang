@@ -5,14 +5,14 @@ var inputs = new Dictionary<string, string>
 };
 
 var code = """
-	// A test morph file
+	Output.WriteLine(Clock.ToFormattedString("dd-mm-yy"));
+	Output.WriteLine(Random.Between(4,40));
 
-	fun HelloWorld()
-	{
-		WriteLine("Hello from Morph!");
-	}
+	var url = Url("http://www.google.com?a=b");
+	Output.WriteLine(url["a"]);
 
-	HelloWorld();
+	var json = Json("{ \"test\": \"value\" }");
+	Output.WriteLine(json["test"]);
 
 	""";
 

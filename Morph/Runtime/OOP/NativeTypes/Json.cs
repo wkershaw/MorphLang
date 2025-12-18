@@ -1,47 +1,18 @@
-﻿using System.Text.Json;
+﻿using Morph.Runtime.OOP.Native;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 
-namespace Morph.Runtime.NativeTypes;
+namespace Morph.Runtime.OOP.NativeTypes;
 
 internal class Json : MorphClass
 {
-	public Json() : base("Json", new Dictionary<string, IMorphInstanceCallable>())
+	public Json() : base("Json")
 	{
-		foreach (var method in GetMethods())
-		{
-			_methods.Add(method.Key, method.Value);
-		}
-	}
+		var constructor = new NativeMorphConstructor(0, (_, _, _) => new JsonInstance(this, ""));
+		AddConstructor(constructor);
 
-	private Dictionary<string, IMorphInstanceCallable> GetMethods()
-	{
-		var methods = new Dictionary<string, IMorphInstanceCallable>();
-
-		methods.Add("init", new Constructor(this));
-
-		return methods;
-	}
-
-	public class Constructor : IMorphInstanceCallable
-	{
-		public int Arity => 1;
-
-		private MorphClass _class;
-
-		public Constructor(MorphClass c)
-		{
-			_class = c;
-		}
-
-		IMorphCallable IMorphInstanceCallable.Bind(MorphInstance instance)
-		{
-			return this;
-		}
-
-		object? IMorphCallable.Call(Interpreter interpreter, List<object?> arguments)
-		{
-			return new JsonInstance(_class, arguments[0]?.ToString() ?? "");
-		}
+		constructor = new NativeMorphConstructor(1, (interp, _, args) => new JsonInstance(this, interp.Stringify(args[0])));
+		AddConstructor(constructor);
 	}
 
 	public class JsonInstance : MorphInstance, IMorphIndexable
@@ -66,7 +37,7 @@ internal class Json : MorphClass
 				return null;
 			}
 
-			JsonNode? value = null;
+            JsonNode? value;
 
 			if (key is string stringKey)
 			{
@@ -88,6 +59,5 @@ internal class Json : MorphClass
 		{
 			return _json?.ToString() ?? "";
 		}
-
 	}
 }

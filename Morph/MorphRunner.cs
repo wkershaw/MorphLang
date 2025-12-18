@@ -2,7 +2,6 @@ using Morph.Parsing;
 using Morph.Parsing.Statements;
 using Morph.Runtime;
 using Morph.Scanning;
-using System.Diagnostics;
 
 namespace Morph;
 
@@ -36,7 +35,7 @@ public static class MorphRunner
 
 		if (hadError)
         {
-			Output("Debug", "Had error, so will not continue");
+			Output("debug", "Had error, so will not continue");
             return;
         }
 

@@ -12,7 +12,7 @@ internal record BlockStmt(List<Stmt> Statements) : Stmt
 	}
 }
 
-internal record ClassStmt(Token Name, List<FunctionStmt> Methods) : Stmt
+internal record ClassDefinitionStmt(Token Name, List<FunctionDefinitionStmt> Methods) : Stmt
 {
 	public override T Accept<T>(IStmtVisitor<T> visitor)
 	{
@@ -28,7 +28,7 @@ internal record ExpressionStmt(Expr Expression) : Stmt
 	}
 }
 
-internal record FunctionStmt(Token Name, List<Token> Params, List<Stmt> Body) : Stmt
+internal record FunctionDefinitionStmt(Token Name, List<Token> Params, List<Stmt> Body) : Stmt
 {
 	public override T Accept<T>(IStmtVisitor<T> visitor)
 	{
@@ -60,7 +60,7 @@ internal record ReturnStmt(Token Keyword, Expr? Value) : Stmt
 	}
 }
 
-internal record VarStmt(Token Name, Expr? Initialiser) : Stmt
+internal record VarDefinitionStmt(Token Name, Expr? Initialiser) : Stmt
 {
 	public override T Accept<T>(IStmtVisitor<T> visitor)
 	{

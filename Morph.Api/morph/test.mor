@@ -2,9 +2,7 @@ in Headers headers;
 
 var cdpApiKey = headers["CDP-Api-Key"];
 
-var random = Random();
-var clock = Clock();
-var timestamp = clock.toFormattedString("s") + "Z";
+var timestamp = Clock.ToFormattedString("s") + "Z";
 
 if (cdpApiKey != "123")
 {
@@ -17,21 +15,21 @@ if (cdpApiKey != "123")
 		\"path\": \"/api/latest/notice/submission/submit\"
 	}";
 
-	WriteLine(unauthorisedResponse);
-	SetResponseCode(400);
+	Output.WriteLine(unauthorisedResponse);
+	Output.SetResponseCode(400);
 	return;
 }
 
 var successResponse = $"
 {
-	\"submission_id\": \"[clock.toFormattedString("yyyyMMdd")]-[random.between(1, 999999)]\",
+	\"submission_id\": \"[Clock.ToFormattedString("yyyyMMdd")]-[Random.Between(1, 999999)]\",
 	\"received_at\": \"[timestamp]\",
 	\"status\": \"RECEIVED\",
 	\"reason_code\": null,
 	\"status_updated_at\": \"[timestamp]\",
 	\"no_doc_ext\": null,
 	\"form\": null,
-	\"languages\": \[\],
+	\"languages\": \[],
 	\"publication_info\": null,
 	\"technical_validation_report\": null,
 	\"validation_rules_report\": null,
@@ -40,5 +38,5 @@ var successResponse = $"
 	\"ref_no_doc_ojs\": null
 }";
 
-WriteLine(successResponse);
-SetResponseCode(200);
+Output.WriteLine(successResponse);
+Output.SetResponseCode(200);

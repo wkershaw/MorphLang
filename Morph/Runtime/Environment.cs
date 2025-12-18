@@ -1,3 +1,5 @@
+using Morph.Runtime.Functions;
+using Morph.Runtime.Functions.Interfaces;
 using Morph.Scanning;
 
 namespace Morph.Runtime;
@@ -18,7 +20,26 @@ internal class Environment
         _values[name] = value;
     }
 
-    public object? Get(Token name)
+	public void DefineFunction(string name, IMorphFunction function)
+	{
+		if (_values.TryGetValue(name, out object? value))
+		{
+			if (value is FunctionSet functionSet)
+			{
+				functionSet.AddOverload(function);
+				return;
+			}
+
+			throw new RuntimeException(null, $"Cannot overload non-function variable '{name}'.");
+		}
+
+		var newFunctionSet = new FunctionSet(name);
+		newFunctionSet.AddOverload(function);
+		_values[name] = newFunctionSet;
+	}
+
+
+	public object? Get(Token name)
     {
 		return Get(name.Lexeme);
     }

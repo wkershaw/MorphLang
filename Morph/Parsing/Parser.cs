@@ -61,12 +61,12 @@ internal class Parser
         }
     }
 
-	private static ClassStmt ClassDeclaration(ListHelper<Token> tokens)
+	private static ClassDefinitionStmt ClassDeclaration(ListHelper<Token> tokens)
 	{
 		Token name = tokens.Consume(t => t.Type == TokenType.Identifier, "Invalid class name");
 		_ = tokens.Consume(t => t.Type == TokenType.LeftBrace, "Expected a '{' before class body");
 
-		List<FunctionStmt> methods = [];
+		List<FunctionDefinitionStmt> methods = [];
 		while (!tokens.Match(t => t.Type, TokenType.RightBrace) && !tokens.IsAtEnd())
 		{
 			methods.Add(Function(tokens, "method"));
@@ -74,10 +74,10 @@ internal class Parser
 
 		_ = tokens.Consume(t => t.Type == TokenType.RightBrace, "Expected a '}' after class body");
 
-		return new ClassStmt(name, methods);
+		return new ClassDefinitionStmt(name, methods);
 	}
 
-	private static FunctionStmt Function(ListHelper<Token> tokens, string kind)
+	private static FunctionDefinitionStmt Function(ListHelper<Token> tokens, string kind)
     {
         Token name = tokens.Consume(t => t.Type == TokenType.Identifier, $"Expected a {kind} name.");
 
@@ -105,10 +105,10 @@ internal class Parser
         
 		List<Stmt> body = BlockStatement(tokens);
         
-		return new FunctionStmt(name, parameters, body);
+		return new FunctionDefinitionStmt(name, parameters, body);
     }
 
-    private static VarStmt VarDeclaration(ListHelper<Token> tokens)
+    private static VarDefinitionStmt VarDeclaration(ListHelper<Token> tokens)
     {
         Token name = tokens.Consume(t => t.Type == TokenType.Identifier, "Invalid variable name.");
 
@@ -120,12 +120,12 @@ internal class Parser
         }
 
         _ = tokens.Consume(t => t.Type == TokenType.Semicolon, "Expected a ';' after variable declaration.");
-        return new VarStmt(name, initialiser);
+        return new VarDefinitionStmt(name, initialiser);
     }
 
     private static InStmt InDeclaration(ListHelper<Token> tokens)
     {
-        if (!tokens.MatchAndConsume(t => t.Type, TokenType.Identifier))
+        if (!tokens.Match(t => t.Type, TokenType.Identifier))
         {
 			// TODO: better ex type here
             throw new InvalidOperationException("Expect 'in' declaration type and name.");
@@ -424,9 +424,9 @@ internal class Parser
             {
                 expr = FinishCall(tokens, expr);
             }
-            if (tokens.Match(t => t.Type, TokenType.Dot))
+            if (tokens.MatchAndConsume(t => t.Type, TokenType.Dot))
             {
-                Token name = tokens.Consume(t => t.Type == TokenType.Identifier, "Expect property name after '.'");
+                Token name = tokens.Consume(t => t.Type == TokenType.Identifier, "Expected property name after '.'");
                 expr = new GetExpr(expr, name);
             }
             else
@@ -453,7 +453,7 @@ internal class Parser
 
                 arguments.Add(Expression(tokens));
             }
-            while (tokens.MatchAndConsume(t => t.Type == TokenType.Comma));
+            while (tokens.MatchAndConsume(t => t.Type, TokenType.Comma));
         }
 
         Token paren = tokens.Consume(t => t.Type == TokenType.RightParen, "Expected ')' after arguments.");
@@ -466,7 +466,7 @@ internal class Parser
 
         while (true)
         {
-            if (tokens.MatchAndConsume(t => t.Type == TokenType.LeftSquareBracket))
+            if (tokens.MatchAndConsume(t => t.Type, TokenType.LeftSquareBracket))
             {
                 expr = FinishIndex(tokens, expr);
             }
@@ -513,7 +513,7 @@ internal class Parser
             return new ThisExpr(tokens.Consume());
         }
 
-		if (tokens.MatchAndConsume(t => t.Type == TokenType.InterpolatedStringStart))
+		if (tokens.MatchAndConsume(t => t.Type, TokenType.InterpolatedStringStart))
         {
             return InterpolatedString(tokens);
         }
@@ -538,7 +538,7 @@ internal class Parser
     {
         var parts = new List<Expr>();
 
-        while (!tokens.MatchAndConsume(t => t.Type, TokenType.InterpolatedStringEnd))
+        while (!tokens.Match(t => t.Type, TokenType.InterpolatedStringEnd))
         {
             if (tokens.Match(t => t.Type, TokenType.String))
             {

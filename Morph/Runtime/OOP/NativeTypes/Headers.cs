@@ -1,44 +1,16 @@
-﻿namespace Morph.Runtime.NativeTypes;
+﻿using Morph.Runtime.OOP.Native;
+
+namespace Morph.Runtime.OOP.NativeTypes;
 
 internal class Headers : MorphClass
 {
-	public Headers() : base("Headers", new Dictionary<string, IMorphInstanceCallable>())
+	public Headers() : base("Headers")
 	{
-		foreach (var method in GetMethods())
-		{
-			_methods.Add(method.Key, method.Value);
-		}
-	}
+		var constructor = new NativeMorphConstructor(0, (_, _, _) => new HeadersInstance(this, ""));
+		AddConstructor(constructor);
 
-	private Dictionary<string, IMorphInstanceCallable> GetMethods()
-	{
-		var methods = new Dictionary<string, IMorphInstanceCallable>();
-
-		methods.Add("init", new Constructor(this));
-
-		return methods;
-	}
-
-	public class Constructor : IMorphInstanceCallable
-	{
-		public int Arity => 1;
-
-		private MorphClass _class;
-
-		public Constructor(MorphClass c)
-		{
-			_class = c;
-		}
-
-		IMorphCallable IMorphInstanceCallable.Bind(MorphInstance instance)
-		{
-			return this;
-		}
-
-		object? IMorphCallable.Call(Interpreter interpreter, List<object?> arguments)
-		{
-			return new HeadersInstance(_class, arguments[0]?.ToString() ?? "");
-		}
+		constructor = new NativeMorphConstructor(1, (interp, _, args) => new HeadersInstance(this, interp.Stringify(args[0])));
+		AddConstructor(constructor);
 	}
 
 	public class HeadersInstance : MorphInstance, IMorphIndexable

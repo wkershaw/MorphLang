@@ -1,3 +1,4 @@
+using Morph.Runtime.OOP;
 using Morph.Scanning;
 
 namespace Morph.Runtime;
@@ -20,10 +21,10 @@ internal class MorphInstance
             return value;
         }
 
-        var method = _class.FindMethod(name.Lexeme);
-        if (method is not null)
+        var methodSet = _class.FindMethodSet(name.Lexeme);
+        if (methodSet is not null)
         {
-            return method.Bind(this);
+            return methodSet.Bind(this);
         }
 
         throw new RuntimeException(name, $"Undefined property: '{name.Lexeme}'");
@@ -33,6 +34,11 @@ internal class MorphInstance
     {
         _fields[name.Lexeme] = value;
     }
+
+	public void Set(string name, object? value)
+	{
+		_fields[name] = value;
+	}
 
     public override string ToString()
     {

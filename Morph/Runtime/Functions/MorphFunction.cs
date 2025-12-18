@@ -1,21 +1,20 @@
 using Morph.Parsing.Statements;
+using Morph.Runtime.Functions.Interfaces;
 using Morph.Scanning;
 
-namespace Morph.Runtime;
+namespace Morph.Runtime.Functions;
 
-internal class MorphFunction : IMorphInstanceCallable
+internal class MorphFunction : IMorphFunction
 {
-    private readonly FunctionStmt _declaration;
+    private readonly FunctionDefinitionStmt _declaration;
     private readonly Environment _closure;
-    private bool _isInitialiser;
 
     public int Arity => _declaration.Params.Count;
 
-    public MorphFunction(FunctionStmt declaration, Environment closure, bool isInitialiser)
+    public MorphFunction(FunctionDefinitionStmt declaration, Environment closure)
     {
         _declaration = declaration;
         _closure = closure;
-        _isInitialiser = isInitialiser;
     }
 
     public object? Call(Interpreter interpreter, List<object?> arguments)
@@ -33,27 +32,10 @@ internal class MorphFunction : IMorphInstanceCallable
         }
         catch (Return r)
         {
-            if (_isInitialiser)
-            {
-                return _closure.GetAt(0, "this");
-            }
-
             return r.Value;
         }
 
-        if (_isInitialiser)
-        {
-            return _closure.GetAt(0, "this");
-        }
-
         return null;
-    }
-
-    public IMorphCallable Bind(MorphInstance instance)
-    {
-        Environment environment = new Environment(_closure);
-        environment.Define("this", instance);
-        return new MorphFunction(_declaration, environment, _isInitialiser);
     }
 
     public override string ToString()

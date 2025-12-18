@@ -50,7 +50,7 @@ internal class Resolver : IExprVisitor<object?>, IStmtVisitor<object?>
         return null;
     }
 
-    public object? Visit(VarStmt statement)
+    public object? Visit(VarDefinitionStmt statement)
     {
         Declare(statement.Name);
 
@@ -63,7 +63,7 @@ internal class Resolver : IExprVisitor<object?>, IStmtVisitor<object?>
         return null;
     }
 
-    public object? Visit(FunctionStmt statement)
+    public object? Visit(FunctionDefinitionStmt statement)
     {
         Declare(statement.Name);
         Define(statement.Name);
@@ -72,7 +72,7 @@ internal class Resolver : IExprVisitor<object?>, IStmtVisitor<object?>
         return null;
     }
 
-    public object? Visit(ClassStmt statement)
+    public object? Visit(ClassDefinitionStmt statement)
     {
         var enclosingClass = _currentClass;
         _currentClass = ClassType.Class;
@@ -83,7 +83,7 @@ internal class Resolver : IExprVisitor<object?>, IStmtVisitor<object?>
         BeginScope();
         _scopes.Peek().Add("this", true);
 
-        foreach (FunctionStmt method in statement.Methods)
+        foreach (FunctionDefinitionStmt method in statement.Methods)
         {
             var declaration = FunctionType.Method;
             if (method.Name.Lexeme == "init")
@@ -282,7 +282,7 @@ internal class Resolver : IExprVisitor<object?>, IStmtVisitor<object?>
         scope[name.Lexeme] = true;
     }
 
-    private void ResolveFunction(FunctionStmt statement, FunctionType type)
+    private void ResolveFunction(FunctionDefinitionStmt statement, FunctionType type)
     {
         FunctionType enclosingFunction = _currentFunction;
         _currentFunction = type;

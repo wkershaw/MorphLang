@@ -1,46 +1,14 @@
-﻿using System.Web;
+﻿using Morph.Runtime.OOP.Native;
+using System.Web;
 
-namespace Morph.Runtime.NativeTypes;
+namespace Morph.Runtime.OOP.NativeTypes;
 
 internal class Url : MorphClass
 {
-	public Url() : base("Url", new Dictionary<string, IMorphInstanceCallable>())
+	public Url() : base("Url")
 	{
-		foreach (var method in GetMethods())
-		{
-			_methods.Add(method.Key, method.Value);
-		}
-	}
-
-	private Dictionary<string, IMorphInstanceCallable> GetMethods()
-	{
-		var methods = new Dictionary<string, IMorphInstanceCallable>();
-
-		methods.Add("init", new Constructor(this));
-
-		return methods;
-	}
-
-	public class Constructor : IMorphInstanceCallable
-	{
-		public int Arity => 1;
-
-		private MorphClass _class;
-
-		public Constructor(MorphClass c)
-		{
-			_class = c;
-		}
-
-		IMorphCallable IMorphInstanceCallable.Bind(MorphInstance instance)
-		{
-			return this;
-		}
-
-		object? IMorphCallable.Call(Interpreter interpreter, List<object?> arguments)
-		{
-			return new UrlInstance(_class, arguments[0]?.ToString() ?? "");
-		}
+		var constructor = new NativeMorphConstructor(1, (interp, _, args) => new UrlInstance(this, interp.Stringify(args[0])));
+		AddConstructor(constructor);
 	}
 
 	public class UrlInstance : MorphInstance, IMorphIndexable
@@ -63,7 +31,7 @@ internal class Url : MorphClass
 			}
 		}
 
-		object? IMorphIndexable.Get(Interpreter interpreter, object? key)
+		public object? Get(Interpreter interpreter, object? key)
 		{
 			if (key is string keyString)
 			{
@@ -89,6 +57,7 @@ internal class Url : MorphClass
 
 			throw new RuntimeException(null, "Can only index Url with a string or int");
 		}
+
 		public override string ToString()
 		{
 			return _uri.OriginalString;

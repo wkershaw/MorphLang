@@ -4,9 +4,9 @@ namespace Morph.Parsing.Visitors;
 
 internal interface IStmtVisitor<T>
 {
-    T Visit(FunctionStmt statement);
+    T Visit(FunctionDefinitionStmt statement);
 
-    T Visit(VarStmt statement);
+    T Visit(VarDefinitionStmt statement);
 
     T Visit(InStmt statement);
 
@@ -20,5 +20,5 @@ internal interface IStmtVisitor<T>
 
     T Visit(BlockStmt statement);
 
-    T Visit(ClassStmt statement);
+    T Visit(ClassDefinitionStmt statement);
 }

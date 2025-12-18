@@ -1,6 +1,6 @@
-public class MorphFileResolver
+public static class MorphFileResolver
 {
-    public string? GetMorphForUrl(string url)
+    public static string? GetMorphForUrl(string url)
     {
         var filePath = Directory.GetCurrentDirectory() + "\\morph\\" + url.Trim('/') + ".mor";
 

@@ -1,11 +1,10 @@
 using System.Text;
-using System.Text.Json;
-using System.Text.Json.Nodes;
 using Morph.Parsing.Expressions;
 using Morph.Parsing.Statements;
 using Morph.Parsing.Visitors;
-using Morph.Runtime.NativeFunctions;
-using Morph.Runtime.NativeTypes;
+using Morph.Runtime.Functions;
+using Morph.Runtime.OOP;
+using Morph.Runtime.OOP.NativeTypes;
 using Morph.Scanning;
 
 namespace Morph.Runtime;
@@ -21,22 +20,19 @@ internal class Interpreter : IExprVisitor<object?>, IStmtVisitor<object?>
     public Interpreter()
     {
         _inputs = new Dictionary<string, string>();
+        _locals = new Dictionary<Expr, int>();
 
         Globals = new Environment();
 
-        Globals.Define("Write", new WriteCallable());
-        Globals.Define("Debug", new DebugCallable());
-        Globals.Define("WriteLine", new WriteLineCallable());
-        Globals.Define("SetHeader", new SetHeaderCallable());
-        Globals.Define("SetResponseCode", new SetResponseCodeCallable());
+		Globals.Define("Output", Output.Instance);
+        Globals.Define("Random", OOP.NativeTypes.Random.Instance);
+        Globals.Define("Clock", Clock.Instance);
+
 		Globals.Define("Json", new Json());
         Globals.Define("Url", new Url());
         Globals.Define("Headers", new Headers());
-        Globals.Define("Clock", new Clock());
-        Globals.Define("Random", new NativeTypes.Random());
 
         _environment = Globals;
-        _locals = new Dictionary<Expr, int>();
     }
 
     public void Interpret(List<Stmt> statements, Dictionary<string, string> inputs)
@@ -94,32 +90,40 @@ internal class Interpreter : IExprVisitor<object?>, IStmtVisitor<object?>
         }
     }
 
-    public object? Visit(FunctionStmt statement)
+    public object? Visit(FunctionDefinitionStmt statement)
     {
-        var function = new MorphFunction(statement, _environment, false);
-        _environment.Define(statement.Name.Lexeme, function);
+        var function = new MorphFunction(statement, _environment);
+
+        _environment.DefineFunction(statement.Name.Lexeme, function);
 
         return null;
     }
 
-    public object? Visit(ClassStmt statement)
+    public object? Visit(ClassDefinitionStmt statement)
     {
         _environment.Define(statement.Name.Lexeme, null);
 
-        var methods = new Dictionary<string, IMorphInstanceCallable>();
+        MorphClass mClass = new MorphClass(statement.Name.Lexeme);
 
-        foreach (FunctionStmt method in statement.Methods)
+		foreach (FunctionDefinitionStmt method in statement.Methods)
         {
-            var function = new MorphFunction(method, _environment, method.Name.Lexeme == "init");
-            methods.Add(method.Name.Lexeme, function);
+			if (method.Name.Lexeme == "init")
+			{
+				var constructor = new MorphConstructor(method, _environment);
+				mClass.AddConstructor(constructor);
+			}
+			else
+			{
+				var function = new MorphMethod(method, _environment);
+				mClass.AddMethod(method.Name.Lexeme, function);
+			}
         }
 
-        MorphClass mClass = new MorphClass(statement.Name.Lexeme, methods);
         _environment.Assign(statement.Name, mClass);
         return null;
     }
 
-    public object? Visit(VarStmt statement)
+    public object? Visit(VarDefinitionStmt statement)
     {
         object? value = null;
         if (statement.Initialiser != null)
@@ -138,20 +142,16 @@ internal class Interpreter : IExprVisitor<object?>, IStmtVisitor<object?>
             throw new RuntimeException(statement.Name, $"Input '{statement.Name.Lexeme}' not found.");
         }
 
-        object? callee = Evaluate(statement.Type);
+        object? type = Evaluate(statement.Type);
 
         List<object?> arguments = [inputString];
 
-        if (callee is not null && callee is IMorphCallable function)
+        if (type is not null && type is MorphClass mClass)
         {
-            if (function.Arity != 1)
-            {
-                throw new RuntimeException(statement.Name, $"{statement.Name.Lexeme} does not have a constructor that takes 1 argument.");
-            }
-
-            var input = function.Call(this, arguments);
-            _environment.Define(statement.Name.Lexeme, input);
-			return input;
+			var instance = mClass.Construct(this, arguments);
+            _environment.Define(statement.Name.Lexeme, instance);
+			
+			return null;
         }
 
         throw new RuntimeException(statement.Name, $"Input type '{statement.Type}' is not valid.");
@@ -325,18 +325,25 @@ internal class Interpreter : IExprVisitor<object?>, IStmtVisitor<object?>
             arguments.Add(Evaluate(arg));
         }
 
-        if (callee is not null && callee is IMorphCallable function)
-        {
-            if (arguments.Count != function.Arity)
-            {
-                throw new RuntimeException(expression.Paren, $"Expected {function.Arity} arguments but got {arguments.Count}.");
-            }
+		if (callee is null)
+		{
+			throw new RuntimeException(expression.Paren, $"Function or method does not exist");
+		}
 
-            return function.Call(this, arguments);
+        if (callee is FunctionSet functionSet)
+        {
+            return functionSet
+				.GetOverload(arguments.Count)
+				.Call(this, arguments);
         }
 
-        throw new RuntimeException(expression.Paren, "Can only call functions and classes");
-    }
+		if (callee is MorphClass mClass)
+		{
+			return mClass.Construct(this, arguments);
+		}
+
+		throw new RuntimeException(expression.Paren, "Can only call functions and methods");
+	}
 
     public object? Visit(GetExpr expression)
     {

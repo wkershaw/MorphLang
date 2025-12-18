@@ -19,6 +19,7 @@ internal enum TokenType
     // Literals.
     Identifier, String, Number,
     InterpolatedStringStart, InterpolatedStringEnd, InterpolatedStringExpressionStart, InterpolatedStringExpressionEnd, 
+	TickStringPadding,
 
     // Keywords.
     And, Else, False, For,

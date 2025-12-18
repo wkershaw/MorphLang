@@ -23,6 +23,16 @@ namespace Morph.Runtime.Functions
 			_overloads[function.Arity] = function;
 		}
 
+		public IMorphFunction? TryFindOverload(int arity)
+		{
+			if (_overloads.TryGetValue(arity, out IMorphFunction? function))
+			{
+				return function;
+			}
+
+			return null;
+		}
+
 		public IMorphFunction GetOverload(int arity)
 		{
 			if (_overloads.TryGetValue(arity, out IMorphFunction? function))

@@ -11,35 +11,36 @@ namespace Morph.Runtime;
 
 internal class Interpreter : IExprVisitor<object?>, IStmtVisitor<object?>
 {
-    private Dictionary<string, string> _inputs;
-
     public Environment Globals { get; private set; }
+    
+	private Dictionary<string, string> _inputs;
+	private string _output;
+
     private Environment _environment;
     private readonly Dictionary<Expr, int> _locals;
 
     public Interpreter()
     {
-        _inputs = new Dictionary<string, string>();
-        _locals = new Dictionary<Expr, int>();
-
         Globals = new Environment();
 
-		Globals.Define("Output", Output.Instance);
-        Globals.Define("Random", OOP.NativeTypes.Random.Instance);
-        Globals.Define("Clock", Clock.Instance);
+        _inputs = new Dictionary<string, string>();
+		_output = "";
 
-		Globals.Define("Json", new Json());
-        Globals.Define("Url", new Url());
-        Globals.Define("Headers", new Headers());
-
+		_locals = new Dictionary<Expr, int>();
         _environment = Globals;
+
+		DefineNativeFunctions();
+		DefineStaticInstances();
+		DefineNativeTypes();
     }
 
-    public void Interpret(List<Stmt> statements, Dictionary<string, string> inputs)
+    public object? Interpret(List<Stmt> statements, Dictionary<string, string> inputs)
     {
         _inputs = inputs;
         Interpret(statements);
-    }
+
+		return _output;
+	}
 
     public void Interpret(List<Stmt> statements)
     {
@@ -50,10 +51,11 @@ internal class Interpreter : IExprVisitor<object?>, IStmtVisitor<object?>
                 Execute(statement);
             }
         }
-        catch (Return)
+        catch (Return r)
         {
-            // Top level return hit, so just exit the program
-        }
+			// Top level return hit, so just exit the program
+			_output = Stringify(r.Value);
+		}
         catch (RuntimeException e)
         {
             MorphRunner.RuntimeError(e);
@@ -65,6 +67,7 @@ internal class Interpreter : IExprVisitor<object?>, IStmtVisitor<object?>
         if (obj is null) return "nil";
         if (obj is decimal dec) return dec.ToString();
         if (obj is string str) return str;
+		if (obj is MorphInstance instance) return instance.ToString(this);
         return obj.ToString() ?? "nil";
     }
 
@@ -260,7 +263,7 @@ internal class Interpreter : IExprVisitor<object?>, IStmtVisitor<object?>
                     return leftDecimal + rightDecimal;
                 }
 
-                return (left?.ToString() ?? "nil") + (right?.ToString() ?? "nil");
+                return Stringify(left) + Stringify(right);
 
             case TokenType.Minus:
                 CheckNumberOperands(expression.Op, left, right, out leftValue, out rightValue);
@@ -382,9 +385,9 @@ internal class Interpreter : IExprVisitor<object?>, IStmtVisitor<object?>
         object? callee = Evaluate(expression.Callee);
         object? index = Evaluate(expression.Index);
 
-        if (callee is not null && callee is IMorphIndexable indexable)
+        if (callee is not null && callee is MorphInstance instance)
         {
-            return indexable.Get(this, index);
+            return instance.Index(index);
         }
 
         throw new RuntimeException(expression.Bracket, "Can only index into indexable objects.");
@@ -420,7 +423,26 @@ internal class Interpreter : IExprVisitor<object?>, IStmtVisitor<object?>
         }
     }
 
-    private void Execute(Stmt statement)
+	private void DefineNativeFunctions()
+	{
+	}
+
+	private void DefineStaticInstances()
+	{
+		Globals.Define("Random", OOP.NativeTypes.Random.CreateStaticInstance(this.Globals));
+		Globals.Define("Output", Output.CreateStaticInstance(this.Globals));
+		Globals.Define("Clock", Clock.CreateStaticInstance(this.Globals));
+	}
+
+	private void DefineNativeTypes()
+	{
+		Globals.Define("Json", new Json(this.Globals));
+		//Globals.Define("Url", new Url(this.Globals));
+		//Globals.Define("Headers", new Headers(this.Globals));
+		Globals.Define("HttpResponse", new HttpResponse(this.Globals));
+	}
+
+	private void Execute(Stmt statement)
     {
         statement.Accept(this);
     }

@@ -2,24 +2,26 @@
 
 namespace Morph.Runtime.OOP.Native
 {
-	internal delegate object? NativeMorphFunctionBody(Interpreter interpreter, List<object?> arguments);
-
+	internal delegate object? NativeMorphFunctionBody(Interpreter interpreter, List<object?> arguments, Environment environment);
 
 	internal class NativeMorphFunction : IMorphFunction
     {
 		private readonly NativeMorphFunctionBody _body;
+		private readonly Environment _closure;
 
 		public int Arity { get; private init; }
 
-		public NativeMorphFunction(int arity, NativeMorphFunctionBody body)
+		public NativeMorphFunction(int arity, NativeMorphFunctionBody body, Environment closure)
 		{
-			_body = body;
 			Arity = arity;
+			_body = body;
+			_closure = closure;
 		}
 
         public object? Call(Interpreter interpreter, List<object?> arguments)
         {
-			return _body(interpreter, arguments);
+			Environment environment = new Environment(_closure);
+			return _body(interpreter, arguments, environment);
         }
 
 		public override string ToString()

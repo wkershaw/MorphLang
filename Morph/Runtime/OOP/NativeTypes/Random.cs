@@ -4,18 +4,26 @@ namespace Morph.Runtime.OOP.NativeTypes;
 
 internal class Random : MorphClass
 {
-	public static MorphInstance Instance = new MorphInstance(new Random());
-
-	public Random() : base("Random")
+	public Random(Environment closure) : base("Random")
 	{
-		var constructor = new NativeMorphConstructor(0, (_, _, _) => throw new RuntimeException(null, "Cannot create new instance of Output class"));
+		var constructor = new NativeMorphConstructor(0, Constructor, closure);
 		AddConstructor(constructor);
 
-		var between = new NativeMorphMethod(2, Between);
+		var between = new NativeMorphMethod(2, Between, closure);
 		AddMethod("Between", between);
 	}
 
-	private object? Between(Interpreter interpreter, List<object?> arguments)
+	public static MorphInstance CreateStaticInstance(Environment closure)
+	{
+		return new MorphInstance(new Random(closure));
+	}
+
+	private MorphInstance Constructor(Interpreter interpreter, MorphInstance instance, List<object?> arguments)
+	{
+		throw new RuntimeException(null, "Cannot create new instance of Random class");
+	}
+
+	private object? Between(Interpreter interpreter, List<object?> arguments, Environment closure)
 	{
 		if (!int.TryParse(arguments[0]?.ToString(), out int lowerBound))
 		{

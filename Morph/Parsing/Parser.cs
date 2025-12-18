@@ -537,13 +537,31 @@ internal class Parser
     private static InterpolatedStringExpr InterpolatedString(ListHelper<Token> tokens)
     {
         var parts = new List<Expr>();
+		string padding = "";
 
-        while (!tokens.Match(t => t.Type, TokenType.InterpolatedStringEnd))
+		if (tokens.Match(tokens => tokens.Type, TokenType.TickStringPadding))
+		{
+			padding = tokens.Consume().Lexeme;
+		}
+
+		while (!tokens.Match(t => t.Type, TokenType.InterpolatedStringEnd, TokenType.TickStringPadding))
         {
             if (tokens.Match(t => t.Type, TokenType.String))
             {
-                // String literal part
-                parts.Add(new LiteralExpr(tokens.Consume().Literal));
+				var token = tokens.Consume();
+				string value = token.Literal?.ToString() ?? "";
+
+				if (!string.IsNullOrWhiteSpace(value) && !value.StartsWith(padding))
+				{
+					MorphRunner.Error(token, "Inconsistent tick string padding in interpolated string.");
+					parts.Add(new LiteralExpr(value));
+					continue;
+				}
+
+                string unpaddedValue = value[padding.Length..];
+
+				// String literal part
+				parts.Add(new LiteralExpr(unpaddedValue));
             }
             else if (tokens.MatchAndConsume(t => t.Type, TokenType.InterpolatedStringExpressionStart))
             {
@@ -555,6 +573,7 @@ internal class Parser
             else
             {
                 MorphRunner.Error(tokens.Current, "Unexpected token in interpolated string");
+				tokens.Consume();
             }
         }
 

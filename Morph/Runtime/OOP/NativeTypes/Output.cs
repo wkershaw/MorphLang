@@ -1,49 +1,57 @@
 ﻿using Morph.Runtime.OOP.Native;
 namespace Morph.Runtime.OOP.NativeTypes
 {
-    internal class Output : MorphClass
-    {
-		public static MorphInstance Instance = new MorphInstance(new Output());
-
-        public Output() : base("Output")
-        {
-			var constructor = new NativeMorphConstructor(0, (_, _, _) => throw new RuntimeException(null, "Cannot create new instance of Output class"));
+	internal class Output : MorphClass
+	{
+		public Output(Environment closure) : base("Output")
+		{
+			var constructor = new NativeMorphConstructor(0, Constructor, closure);
 			AddConstructor(constructor);
 
-			var debug = new NativeMorphMethod(1, Debug);
+			var debug = new NativeMorphMethod(1, Debug, closure);
 			AddMethod("Debug", debug);
 
-			var error = new NativeMorphMethod(1, Error);
+			var error = new NativeMorphMethod(1, Error, closure);
 			AddMethod("Error", error);
 
-			var setHeader = new NativeMorphMethod(2, SetHeader);
+			var setHeader = new NativeMorphMethod(2, SetHeader, closure);
 			AddMethod("SetHeader", setHeader);
 
-			var setResponseCode = new NativeMorphMethod(1, SetResponseCode);
+			var setResponseCode = new NativeMorphMethod(1, SetResponseCode, closure);
 			AddMethod("SetResponseCode", setResponseCode);
 
-			var write = new NativeMorphMethod(1, Write);
+			var write = new NativeMorphMethod(1, Write, closure);
 			AddMethod("Write", write);
 
-			var writeLine = new NativeMorphMethod(1, WriteLine);
+			var writeLine = new NativeMorphMethod(1, WriteLine, closure);
 			AddMethod("WriteLine", writeLine);
 		}
 
-		private object? Debug(Interpreter interpreter, List<object?> arguments)
+		public static MorphInstance CreateStaticInstance(Environment closure)
+		{
+			return new MorphInstance(new Output(closure));
+		}
+
+		private MorphInstance Constructor(Interpreter interpreter, MorphInstance instance, List<object?> arguments)
+		{
+			throw new RuntimeException(null, "Cannot create new instance of Output class");
+		}
+
+		private object? Debug(Interpreter interpreter, List<object?> arguments, Environment closure)
 		{
 			MorphRunner.Output("debug", interpreter.Stringify(arguments[0]));
 
 			return null;
 		}
 
-		private object? Error(Interpreter interpreter, List<object?> arguments)
+		private object? Error(Interpreter interpreter, List<object?> arguments, Environment closure)
 		{
 			MorphRunner.Output("error", interpreter.Stringify(arguments[0]));
 
 			return null;
 		}
 
-		private object? SetHeader(Interpreter interpreter, List<object?> arguments)
+		private object? SetHeader(Interpreter interpreter, List<object?> arguments, Environment closure)
 		{
 			string key = interpreter.Stringify(arguments[0]);
 			if (!key.All(c => char.IsLetterOrDigit(c) || c == '-' || c == '_'))
@@ -61,7 +69,7 @@ namespace Morph.Runtime.OOP.NativeTypes
 			return null;
 		}
 
-		private object? SetResponseCode(Interpreter interpreter, List<object?> arguments)
+		private object? SetResponseCode(Interpreter interpreter, List<object?> arguments, Environment closure)
 		{
 			if (!int.TryParse(arguments[0]?.ToString(), out int statusCode))
 			{
@@ -72,14 +80,14 @@ namespace Morph.Runtime.OOP.NativeTypes
 			return null;
 		}
 
-		public object? Write(Interpreter interpreter, List<object?> arguments)
+		public object? Write(Interpreter interpreter, List<object?> arguments, Environment closure)
 		{
 			string value = interpreter.Stringify(arguments[0]);
 			MorphRunner.Output("write", value);
 			return null;
 		}
 
-		public object? WriteLine(Interpreter interpreter, List<object?> arguments)
+		public object? WriteLine(Interpreter interpreter, List<object?> arguments, Environment closure)
 		{
 			string value = interpreter.Stringify(arguments[0]) + "\n";
 			MorphRunner.Output("write", value);

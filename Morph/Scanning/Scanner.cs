@@ -90,6 +90,11 @@ internal static class Scanner
             return ScanString(source, currentLine);
         }
 
+		if (c == '`')
+		{
+			return ScanTickString(source, currentLine);
+		}
+
         if (c == '$')
         {
             if (source.Peek() == '"')
@@ -219,6 +224,121 @@ internal static class Scanner
         MorphRunner.Error(currentLine, "Unterminated string.");
         return new ScanTokenResult(newLines);
     }
+
+	private static ScanTokenResult ScanTickString(ListHelper<char> source, int currentLine)
+	{
+		Debug.Assert(source.Current == '`');
+		source.MoveNext();
+
+		List<Token> tokens = [];
+		StringBuilder sb = new();
+		bool escaped = false;
+		int newLines = 0;
+
+		Token startToken = new(TokenType.InterpolatedStringStart, "`", null, currentLine);
+		tokens.Add(startToken);
+
+		while (source.MoveNext())
+		{
+			char c = source.Current;
+
+			if (escaped)
+			{
+				escaped = false;
+
+				var escapedCharacter = c switch
+				{
+					'`' => '`',
+					'\\' => '\\',
+					'n' => '\n',
+					'r' => '\r',
+					't' => '\t',
+					'[' => '[',
+					_ => '_'
+				};
+
+				if (escapedCharacter == '_')
+				{
+					MorphRunner.Error(currentLine, $"Unable to escape character '{c}'");
+					continue;
+				}
+
+				_ = sb.Append(escapedCharacter);
+				continue;
+			}
+
+			if (c == '\\')
+			{
+				escaped = true;
+				continue;
+			}
+
+			if (c == '\n')
+			{
+				newLines++;
+				currentLine++;
+				sb.Append(c);
+
+				tokens.Add(new Token(TokenType.String, sb.ToString(), sb.ToString(), currentLine));
+				sb.Clear();
+
+				continue;
+			}
+
+			if (c == '[')
+			{
+				// Emit any string part before the expression
+				if (sb.Length > 0)
+				{
+					tokens.Add(new Token(TokenType.String, sb.ToString(), sb.ToString(), currentLine));
+					sb.Clear();
+				}
+
+				tokens.Add(new Token(TokenType.InterpolatedStringExpressionStart, sb.ToString(), null, currentLine));
+
+				while (!source.IsAtEnd() && source.Peek() != ']')
+				{
+					ScanTokenResult expressionTokenResult = ScanNextTokens(source, currentLine);
+					currentLine += expressionTokenResult.NewLines;
+					tokens.AddRange(expressionTokenResult.Tokens);
+				}
+
+				if (source.IsAtEnd())
+				{
+					MorphRunner.Error(currentLine, "Unterminated interpolation in string.");
+					break;
+				}
+
+				tokens.Add(new Token(TokenType.InterpolatedStringExpressionEnd, sb.ToString(), null, currentLine));
+
+				// Consume the closing ']'
+				source.MoveNext();
+
+				continue;
+			}
+
+			if (c == '`')
+			{
+				var finalString = sb.ToString();
+
+				if (!string.IsNullOrWhiteSpace(finalString) || tokens.Last().Type != TokenType.String)
+				{
+					MorphRunner.Error(currentLine, "Ending of tick string must be on its own line");
+				}
+				
+				tokens.Insert(1, new Token(TokenType.TickStringPadding, finalString, finalString, currentLine));
+
+				tokens.Add(new Token(TokenType.InterpolatedStringEnd, "`", null, currentLine));
+
+				return new ScanTokenResult(newLines, tokens);
+			}
+
+			sb.Append(c);
+		}
+
+		MorphRunner.Error(currentLine, "Unterminated string.");
+		return new ScanTokenResult(newLines, tokens);
+	}
 
     private static ScanTokenResult ScanInterpolatedString(ListHelper<char> source, int currentLine)
     {

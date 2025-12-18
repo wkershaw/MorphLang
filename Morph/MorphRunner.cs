@@ -23,11 +23,14 @@ public static class MorphRunner
         hadError = false;
         hadRuntimeError = false;
 
-        Run(code, inputs);
+        var result = Run(code, inputs);
+
+		Console.WriteLine(result);
+
         return !hadError && !hadRuntimeError;
     }
 
-    private static void Run(string source, Dictionary<string, string> inputs)
+    private static object? Run(string source, Dictionary<string, string> inputs)
     {
         List<Token> tokens = Scanner.ScanTokens(source);
 
@@ -36,7 +39,7 @@ public static class MorphRunner
 		if (hadError)
         {
 			Output("debug", "Had error, so will not continue");
-            return;
+            return null;
         }
 
         Resolver resolver = new Resolver(interpreter);
@@ -44,10 +47,10 @@ public static class MorphRunner
 
         if (hadError)
         {
-            return;
+            return null;
         }
 
-        interpreter.Interpret(statements, inputs);
+        return interpreter.Interpret(statements, inputs);
     }
 
     internal static void Output(string channel, string message)
@@ -68,7 +71,7 @@ public static class MorphRunner
         }
         else
         {
-            Report(token.Line, $"at '{token.Lexeme}'", message);
+            Report(token.Line, $"at '{token.Lexeme.Trim()}'", message);
         }
     }
 

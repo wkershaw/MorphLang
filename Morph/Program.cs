@@ -5,21 +5,15 @@ var inputs = new Dictionary<string, string>
 };
 
 var code = """
-	class MyClass
-	{
-		init()
-		{
-			this.x = "hello world";
-		}
+	var a = 5;
 
-		say()
-		{
-			Output.WriteLine(this.x);
-		}
-	}
+	var tickString = `
+		hello world
+		  
+		[a]
+	`;
 
-	var i = MyClass();
-	i.say();
+	Output.Write(tickString);
 
 	""";
 
